@@ -88,12 +88,30 @@
 
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <button
+          id="testSoundBtn"
+          type="button"
+          class="tap-btn px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1 border border-amber-400/40"
+        >
+          <span>🔔</span>
+          <span class="hidden sm:inline">ทดสอบเสียง</span>
+        </button>
+
+        <button
           id="toggleSoundBtn"
           type="button"
           class="tap-btn px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1 border border-slate-700"
         >
           <span id="soundIcon">🔊</span>
           <span id="soundLabel" class="hidden md:inline">เปิดเสียง</span>
+        </button>
+
+        <button
+          id="requestNotifyPermBtn"
+          type="button"
+          class="tap-btn px-2.5 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 text-xs font-bold flex items-center gap-1 border border-sky-400/40"
+        >
+          <span>📲</span>
+          <span id="notifyPermLabel" class="hidden md:inline">สิทธิ์แจ้งเตือน</span>
         </button>
 
         <button
@@ -618,28 +636,61 @@
     }
 
     // ==========================================
-    // เสียงแจ้งเตือนเมื่อเปิดหน้าจออยู่
+    // เสียงแจ้งเตือนหน้างาน (Web Audio API)
     // ==========================================
-    function playBeep(freq = 880, duration = 0.18) {
-      if (!appState.soundEnabled) return;
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-      } catch {}
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
     }
 
-    function triggerAlertSound(priority, ticketCode, machineCode) {
+    document.addEventListener('pointerdown', () => {
+      ensureAudioContext();
+    }, { passive: true });
+
+    function playTone(freq = 880, duration = 0.22, type = 'square', volume = 0.28, delaySec = 0) {
       if (!appState.soundEnabled) return;
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+
+      try {
+        const startTime = ctx.currentTime + delaySec;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.001, startTime);
+        gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration + 0.02);
+      } catch (err) {
+        console.warn('Audio error:', err);
+      }
+    }
+
+    function triggerAlertSound(priority, ticketCode = '', machineCode = '') {
+      showSystemAlertNotification(
+        `แจ้งซ่อมหน้างาน (${priority || 'ทั่วไป'})`,
+        `${ticketCode ? ticketCode + ' • ' : ''}${machineCode || 'มีรายการแจ้งซ่อมใหม่'}`
+      );
+
+      if (!appState.soundEnabled) return;
+      ensureAudioContext();
+
       if (priority === 'ฉุกเฉิน') {
         const banner = document.getElementById('urgentAudioBanner');
         const txt = document.getElementById('urgentAudioText');
@@ -647,18 +698,21 @@
           txt.textContent = `ฉุกเฉิน! ${ticketCode} (${machineCode}) กำลังส่งเสียงเตือน`;
           banner.classList.remove('hidden');
         }
+
         clearInterval(alarmInterval);
-        let toggle = false;
-        playBeep(980, 0.2);
-        alarmInterval = setInterval(() => {
-          toggle = !toggle;
-          playBeep(toggle ? 980 : 740, 0.2);
-        }, 550);
+        const runEmergencyPattern = () => {
+          playTone(1046, 0.18, 'square', 0.3, 0);
+          playTone(784, 0.18, 'square', 0.3, 0.22);
+          playTone(1046, 0.22, 'square', 0.3, 0.44);
+        };
+
+        runEmergencyPattern();
+        alarmInterval = setInterval(runEmergencyPattern, 1300);
       } else if (priority === 'ด่วน') {
-        playBeep(820, 0.22);
-        setTimeout(() => playBeep(940, 0.22), 260);
+        playTone(880, 0.18, 'triangle', 0.28, 0);
+        playTone(1174, 0.22, 'triangle', 0.28, 0.22);
       } else {
-        playBeep(660, 0.16);
+        playTone(660, 0.18, 'sine', 0.22, 0);
       }
     }
 
@@ -667,6 +721,63 @@
       alarmInterval = null;
       const banner = document.getElementById('urgentAudioBanner');
       if (banner) banner.classList.add('hidden');
+    }
+
+    // ==========================================
+    // สิทธิ์แจ้งเตือนระบบ & SERVICE WORKER
+    // ==========================================
+    function refreshNotifyPermLabel() {
+      const lbl = document.getElementById('notifyPermLabel');
+      if (!lbl || !('Notification' in window)) return;
+      if (Notification.permission === 'granted') lbl.textContent = 'แจ้งเตือนเปิดอยู่';
+      else if (Notification.permission === 'denied') lbl.textContent = 'แจ้งเตือนถูกปิด';
+      else lbl.textContent = 'สิทธิ์แจ้งเตือน';
+    }
+
+    async function requestSystemNotificationPermission() {
+      if (!('Notification' in window)) {
+        showToast('ℹ️', 'เบราว์เซอร์นี้ไม่รองรับ System Notification');
+        return;
+      }
+      if (Notification.permission === 'granted') {
+        showToast('✅', 'เปิดสิทธิ์แจ้งเตือนระบบไว้แล้ว');
+        refreshNotifyPermLabel();
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      refreshNotifyPermLabel();
+      if (perm === 'granted') {
+        showToast('✅', 'อนุญาตการแจ้งเตือนระบบเรียบร้อย');
+      } else {
+        showToast('⚠️', 'ยังไม่ได้รับสิทธิ์แจ้งเตือนจากระบบ');
+      }
+    }
+
+    function showSystemAlertNotification(title, body) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, {
+              body,
+              tag: 'bkf-maintenance-alert',
+              renotify: true
+            });
+          });
+        } else {
+          new Notification(title, { body });
+        }
+      } catch (e) {
+        console.warn('Notification error:', e);
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {
+          // กรณีที่ยังไม่ได้สร้างไฟล์ sw.js ในโฟลเดอร์ จะไม่ทำให้หน้าแอปทำงานผิดพลาด
+        });
+      });
     }
 
     // ==========================================
@@ -830,7 +941,6 @@
         showToast('✅', `เข้าสู่ระบบ: ${matched.label}`);
       });
 
-      // บังคับ Login ก่อนกดรับงาน / แจ้งซ่อม / ส่งแชท
       document.addEventListener('click', (e) => {
         if (appState.prefs.loggedInUser) return;
         const targetBtn = e.target.closest('button');
@@ -845,7 +955,11 @@
           btnText.includes('ส่ง') ||
           targetBtn.type === 'submit';
 
-        if (isActionBtn && !modal.contains(targetBtn) && targetBtn.id !== 'openLoginModalBtn' && targetBtn.id !== 'toggleSimPanelBtn') {
+        if (
+          isActionBtn &&
+          !modal.contains(targetBtn) &&
+          !['openLoginModalBtn', 'toggleSimPanelBtn', 'testSoundBtn', 'toggleSoundBtn', 'requestNotifyPermBtn'].includes(targetBtn.id)
+        ) {
           e.preventDefault();
           e.stopPropagation();
           openLoginModal();
@@ -1098,15 +1212,36 @@
         });
       }
 
+      const testSoundBtn = document.getElementById('testSoundBtn');
+      if (testSoundBtn) {
+        testSoundBtn.addEventListener('click', () => {
+          const prevSound = appState.soundEnabled;
+          appState.soundEnabled = true;
+          document.getElementById('soundIcon').textContent = '🔊';
+          document.getElementById('soundLabel').textContent = 'เปิดเสียง';
+          ensureAudioContext();
+          playTone(880, 0.18, 'square', 0.28, 0);
+          playTone(1174, 0.22, 'square', 0.28, 0.22);
+          showToast('🔔', 'ทดสอบเสียงแจ้งเตือนแล้ว');
+          if (!prevSound) saveStateToLocalStorage();
+        });
+      }
+
       const toggleSoundBtn = document.getElementById('toggleSoundBtn');
       if (toggleSoundBtn) {
         toggleSoundBtn.addEventListener('click', () => {
           appState.soundEnabled = !appState.soundEnabled;
           document.getElementById('soundIcon').textContent = appState.soundEnabled ? '🔊' : '🔇';
           document.getElementById('soundLabel').textContent = appState.soundEnabled ? 'เปิดเสียง' : 'ปิดเสียง';
-          if (!appState.soundEnabled) stopAlertSound();
+          if (appState.soundEnabled) ensureAudioContext();
+          else stopAlertSound();
           saveStateToLocalStorage();
         });
+      }
+
+      const notifyBtn = document.getElementById('requestNotifyPermBtn');
+      if (notifyBtn) {
+        notifyBtn.addEventListener('click', requestSystemNotificationPermission);
       }
 
       const stopAlarmBtn = document.getElementById('stopAlarmBtn');
@@ -1229,6 +1364,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      refreshNotifyPermLabel();
       populateSelects();
       bindEvents();
       initEmployeeAutoLogin();
