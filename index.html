@@ -410,11 +410,9 @@
               <select
                 id="composerRoleSelect"
                 aria-label="เลือกบทบาทผู้ส่ง"
-                class="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                class="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer max-w-[230px] sm:max-w-[300px]"
               >
-                <option value="ช่างซ่อมบำรุง">ช่างเก่ง (ช่างซ่อมบำรุง)</option>
-                <option value="หัวหน้างาน">คุณสมชาย (หัวหน้างาน)</option>
-                <option value="ฝ่ายผลิต">คุณวิภา (ฝ่ายผลิต)</option>
+                <!-- Populated dynamically from TECH_TEAM & HEAD_SUPERVISORS -->
               </select>
             </div>
 
@@ -635,9 +633,7 @@
                   id="inputReporter"
                   class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
-                  <option value="คุณสมชาย (หัวหน้างาน)">คุณสมชาย (หัวหน้างาน)</option>
-                  <option value="คุณวิภา (ฝ่ายผลิต)">คุณวิภา (ฝ่ายผลิต)</option>
-                  <option value="ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ">ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ</option>
+                  <!-- Populated dynamically from HEAD_SUPERVISORS -->
                 </select>
               </div>
             </div>
@@ -949,7 +945,7 @@
   "lineZone": "ไลน์ผลิตที่ 1 (Line 1)",
   "priority": "urgent",
   "symptom": "หัวจับชิ้นงานสไลด์ช้าผิดปกติและมีเสียงลมรั่ว",
-  "reporter": "คุณสมชาย (หัวหน้างาน)",
+  "reporter": "W54H15 น.ส.ไพรริน บัวเปื่อย (หัวหน้างาน)",
   "source": "web-portal"
 }</pre>
         </div>
@@ -1022,6 +1018,99 @@
   <script>
     /**
      * =========================================================================
+     * 0. PLANT STAFF DIRECTORY (HEAD SUPERVISORS & MAINTENANCE TECH TEAM)
+     * =========================================================================
+     */
+    // รายชื่อทีมหัวหน้า (ผู้แจ้ง)
+    const HEAD_SUPERVISORS = [
+      "W54H15 น.ส.ไพรริน บัวเปื่อย (หัวหน้างาน)",
+      "W34H02 น.ส.สุขฤทัย ชมผิวดี (หัวหน้างาน)",
+      "W48D04 น.ส.ธนาศรี ทรงพานิช (หัวหน้างาน)",
+      "W49D23 น.ส.รัชนี บุญมา (หัวหน้างาน)",
+      "W58A32 นายจันทร์ทา ภักดี (หัวหน้างาน)",
+      "W64A01 นายสมบูรณ์ ไชยปัญญา (หัวหน้างาน)",
+      "W48A19 นางจิตาภรณ์ ใจพันธ์ (หัวหน้างาน)",
+      "F33B01 นางกรุณี กลิ่นชื่น (หัวหน้างาน)",
+      "F44H01 นายปิ่นแก้ว ยืนยั่ง (ผู้ช่วยผู้จัดการ)",
+      "W62E4 นายธวัฒน์ชัย เพ็งพิภาค (ผู้ช่วยผู้ควบคุมงาน)",
+      "W46L13 นายสมศักดิ์ ทองไทย (ผู้ช่วยผู้ควบคุมงาน)",
+      "W50J07 นายเทวินทร์ บุญโช (ผู้ช่วยผู้ควบคุมงาน)",
+      "W53H18 น.ส.ฉันทนา เครือสวัสดิ์ (หัวหน้างาน)",
+      "F23L01 นายพิชัย นาครักษา (หัวหน้างาน)",
+      "M49C27 นายเฉลิมศักดิ์ สถิตย์ (ผู้จัดการ)",
+      "W50C12 นายศักดิ์สิน กุดวงศ์แก้ว (หัวหน้างาน)",
+      "F45E01 นายปัญญา มีศิลป์ (ผู้ช่วยผู้ควบคุมงาน)",
+      "W52H08 นายนเรศ หวังจิตร์ (หัวหน้างาน)",
+      "W65F21 นายอิทธิพล พรมเมฆ (หัวหน้างาน)",
+      "W58E16 น.ส.รจนา นครราช (หัวหน้างาน)",
+      "W56H54 น.ส.บุษบา อินทร์สำราญ (หัวหน้างาน)",
+      "W65H06 น.ส.นิตยา วงศ์คะสุม (หัวหน้างาน)",
+      "W68A23 นางเอื้องอรุณ เรวรรณ (หัวหน้างาน)"
+    ];
+
+    // รายชื่อทีมช่าง (รับงาน / ส่งอัปเดต)
+    const TECH_TEAM = [
+      "M51B01 นายบัณฑิต มงคลวรผล (ผู้จัดการ)",
+      "W61G08 นายณัฐพงษ์ สรภูมิ (ช่างซ่อมบำรุง)",
+      "W62H17 นายพงษ์วิทย์ รอบคอบ (ช่างซ่อมบำรุง)",
+      "W69B08 น.ส.วีรดา คงทองหลาง (ช่างซ่อมบำรุง)",
+      "W69F40 ศักดินา ปุ๊กคำ (ช่างซ่อมบำรุง)",
+      "W49E46 นายมานพ ภูมิโคกรักษ์ (ช่างซ่อมบำรุง)",
+      "W53A40 นายฉัตรชัย แสงทองสี (ช่างซ่อมบำรุง)",
+      "W67H08 นายมนัส นินาราษฎร์ (ช่างซ่อมบำรุง)",
+      "W60F20 น.ส.นันทินี ชูแสง (ช่างซ่อมบำรุง)",
+      "W68H16 น.ส.จิตราวดี บุญคงมาก (ช่างซ่อมบำรุง)",
+      "M34G01 นางโสภา ชมพล (ช่างซ่อมบำรุง)",
+      "W39F01 นางนัยนา บุญมีจ้อย (ช่างซ่อมบำรุง)"
+    ];
+
+    function getRoleCategoryFromLabel(label) {
+      if (HEAD_SUPERVISORS.includes(label)) return 'หัวหน้างาน';
+      if (TECH_TEAM.includes(label)) return 'ช่างซ่อมบำรุง';
+      return 'ช่างซ่อมบำรุง';
+    }
+
+    function getAvatarBadgeForPerson(label) {
+      const clean = String(label || '').replace(/^(?:[A-Z0-9]+\s+)?(?:น\.ส\.|นาย|นาง)\s*/u, '').trim();
+      const chars = Array.from(clean);
+      const avatarText = chars.slice(0, 2).join('') || 'ชก';
+      const isSupervisor = HEAD_SUPERVISORS.includes(label);
+      return {
+        senderName: label || 'ช่างซ่อมบำรุง',
+        avatarText,
+        avatarBg: isSupervisor ? 'bg-sky-600 text-white' : 'bg-amber-500 text-slate-950',
+        pillClass: isSupervisor
+          ? 'bg-sky-100 text-sky-900 border-sky-200'
+          : 'bg-amber-100 text-amber-900 border-amber-200'
+      };
+    }
+
+    function populateDirectoryDropdowns() {
+      const reporterSelect = document.getElementById('inputReporter');
+      if (reporterSelect) {
+        reporterSelect.innerHTML = HEAD_SUPERVISORS.map(
+          (person) => `<option value="${escapeHtml(person)}">${escapeHtml(person)}</option>`
+        ).join('');
+      }
+
+      const composerSelect = document.getElementById('composerRoleSelect');
+      if (composerSelect) {
+        const techOptionsHtml = TECH_TEAM.map(
+          (person) => `<option value="${escapeHtml(person)}">${escapeHtml(person)}</option>`
+        ).join('');
+        const supOptionsHtml = HEAD_SUPERVISORS.map(
+          (person) => `<option value="${escapeHtml(person)}">${escapeHtml(person)}</option>`
+        ).join('');
+
+        composerSelect.innerHTML = `
+          <optgroup label="ทีมช่างซ่อมบำรุง (รับงาน / ส่งอัปเดต)">${techOptionsHtml}</optgroup>
+          <optgroup label="ทีมหัวหน้า / ผู้แจ้ง">${supOptionsHtml}</optgroup>
+        `;
+      }
+    }
+
+    /**
+     * =========================================================================
      * 1. DYNAMIC PWA MANIFEST & APPLE TOUCH ICON SETUP (SINGLE-FILE PWA)
      * =========================================================================
      */
@@ -1080,28 +1169,28 @@
         machineId: 'MC-CNC-01',
         lineZone: 'ไลน์ผลิตที่ 1 (Line 1)',
         priority: 'emergency',
-        reporter: 'คุณสมชาย (หัวหน้างาน)',
+        reporter: HEAD_SUPERVISORS[0],
         symptom: 'สปินเดิลหยุดหมุนกะทันหันและขึ้นโค้ด Overload จำเป็นต้องหยุดไลน์ผลิตชั่วคราว'
       },
       air_pressure: {
         machineId: 'HTR-PKG-02',
         lineZone: 'แผนกแพ็กกิ้งและคลังสินค้า (Packing)',
         priority: 'urgent',
-        reporter: 'คุณวิภา (ฝ่ายผลิต)',
+        reporter: HEAD_SUPERVISORS[1],
         symptom: 'อุณหภูมิฮีตเตอร์ซีลตกจาก 185°C เหลือ 146°C และมีเสียงลมรั่วที่ชุดวาล์ว'
       },
       conveyor_sensor: {
         machineId: 'CNV-L2-04',
         lineZone: 'ไลน์ผลิตที่ 2 (Line 2)',
         priority: 'urgent',
-        reporter: 'ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ',
+        reporter: HEAD_SUPERVISORS[9],
         symptom: 'เซ็นเซอร์โฟโต้สวิตช์ตรวจจับชิ้นงานค้าง ทำให้สายพานลำเลียงหยุดอัตโนมัติ'
       },
       label_printer: {
         machineId: 'LBL-WH-03',
         lineZone: 'แผนกแพ็กกิ้งและคลังสินค้า (Packing)',
         priority: 'normal',
-        reporter: 'คุณวิภา (ฝ่ายผลิต)',
+        reporter: HEAD_SUPERVISORS[2],
         symptom: 'หัวพิมพ์สติ๊กเกอร์บาร์โค้ดป้อนกระดาษเอียงเล็กน้อย ต้องการให้ช่างช่วยปรับตั้ง'
       }
     };
@@ -1139,33 +1228,16 @@
       }
     };
 
-    const ROLE_BADGES = {
-      'ช่างซ่อมบำรุง': {
-        senderName: 'ช่างเก่ง',
-        avatarText: 'ชก',
-        avatarBg: 'bg-amber-500 text-slate-950',
-        pillClass: 'bg-amber-100 text-amber-900 border-amber-200'
-      },
-      'หัวหน้างาน': {
-        senderName: 'คุณสมชาย',
-        avatarText: 'สช',
-        avatarBg: 'bg-sky-600 text-white',
-        pillClass: 'bg-sky-100 text-sky-900 border-sky-200'
-      },
-      'ฝ่ายผลิต': {
-        senderName: 'คุณวิภา',
-        avatarText: 'วภ',
-        avatarBg: 'bg-emerald-600 text-white',
-        pillClass: 'bg-emerald-100 text-emerald-900 border-emerald-200'
-      }
-    };
-
     function formatThaiTime(dateObj) {
       return dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
     }
 
     function createDefaultData() {
       const now = Date.now();
+      const defaultTech = TECH_TEAM[1] || TECH_TEAM[0];
+      const defaultSup1 = HEAD_SUPERVISORS[0];
+      const defaultSup2 = HEAD_SUPERVISORS[1];
+
       return {
         nextTicketNumber: 2504,
         tickets: {
@@ -1175,9 +1247,9 @@
             lineZone: 'แผนกแพ็กกิ้งและคลังสินค้า (Packing)',
             priority: 'normal',
             symptom: 'หัวพิมพ์บาร์โค้ดติดสติ๊กเกอร์เอียงและเซ็นเซอร์ตรวจจับกล่องไม่ทำงานบางจังหวะ',
-            reporter: 'คุณวิภา (ฝ่ายผลิต)',
+            reporter: defaultSup2,
             status: 'closed',
-            assignedTo: 'ช่างเก่ง (ช่างซ่อมบำรุง)',
+            assignedTo: defaultTech,
             resolutionNote: 'ทำความสะอาดหัวพิมพ์และปรับระยะเซ็นเซอร์เรียบร้อย เทสผ่าน 50 กล่อง',
             createdAt: formatThaiTime(new Date(now - 95 * 60 * 1000))
           },
@@ -1187,9 +1259,9 @@
             lineZone: 'ไลน์ผลิตที่ 1 (Line 1)',
             priority: 'urgent',
             symptom: 'แกนป้อนชิ้นงานสั่นผิดปกติและมีเสียงดังจากชุดเฟืองขับด้านซ้าย',
-            reporter: 'คุณสมชาย (หัวหน้างาน)',
+            reporter: defaultSup1,
             status: 'in_progress',
-            assignedTo: 'ช่างเก่ง (ช่างซ่อมบำรุง)',
+            assignedTo: defaultTech,
             resolutionNote: '',
             createdAt: formatThaiTime(new Date(now - 34 * 60 * 1000))
           },
@@ -1199,7 +1271,7 @@
             lineZone: 'ห้องระบบลมและไฟฟ้า (Utility)',
             priority: 'emergency',
             symptom: 'แรงดันลมหลักในโซนไลน์ 2 ลดลงจาก 6.8 bar เหลือ 5.0 bar ตรวจพบจุดรั่วที่วาล์วแยก',
-            reporter: 'ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ',
+            reporter: defaultSup1,
             status: 'new',
             assignedTo: '',
             resolutionNote: '',
@@ -1216,7 +1288,7 @@
           {
             id: 'item-2',
             type: 'chat',
-            role: 'ช่างซ่อมบำรุง',
+            role: defaultTech,
             text: 'ทำความสะอาดหัวพิมพ์และปรับระยะเซ็นเซอร์ LBL-PKG-04 เรียบร้อยครับ พร้อมเดินเครื่องต่อได้เลย',
             time: formatThaiTime(new Date(now - 74 * 60 * 1000))
           },
@@ -1230,7 +1302,7 @@
             id: 'item-4',
             type: 'system',
             ticketId: 'TKT-2502',
-            actor: 'ช่างเก่ง (ช่างซ่อมบำรุง)',
+            actor: defaultTech,
             status: 'in_progress',
             text: 'รับงานซ่อม TKT-2502 (MC-MILL-01) และเริ่มเข้าตรวจสอบหน้างาน',
             time: formatThaiTime(new Date(now - 29 * 60 * 1000))
@@ -1243,7 +1315,7 @@
           }
         ],
         prefs: {
-          activeRole: 'ช่างซ่อมบำรุง',
+          activeRole: defaultTech,
           soundEnabled: true,
           soundStyle: 'factory_siren', // 'factory_siren' | 'dual_tone' | 'standard_chime'
           volumeBoost: 240, // 80 - 300
@@ -1357,9 +1429,6 @@
       return boostGain;
     }
 
-    /**
-     * Generate PCM WAV Data URI for rock-solid HTML5 Audio fallback on mobile/iframe
-     */
     function getWavFallbackUrl(style, boostPercent) {
       const key = `${style}_${boostPercent}`;
       if (wavCache[key]) return wavCache[key];
@@ -1481,7 +1550,6 @@
           const now = ctx.currentTime;
 
           if (style === 'factory_siren') {
-            // Industrial sweeping siren cut-through burst
             const sweeps = [
               { fStart: 950, fEnd: 1920, start: 0.0, dur: 0.34, type: 'sawtooth', peak: 0.25 },
               { fStart: 1920, fEnd: 1120, start: 0.35, dur: 0.24, type: 'sawtooth', peak: 0.23 },
@@ -1697,7 +1765,7 @@
         lineZone,
         priority: resolvedPriority,
         symptom: cleanSymptom,
-        reporter,
+        reporter: reporter || HEAD_SUPERVISORS[0],
         status: 'new',
         assignedTo: '',
         resolutionNote: '',
@@ -1712,7 +1780,6 @@
         time: timeStr
       });
 
-      // Reset filters so the new ticket is immediately visible in feed
       appState.filterStatus = 'all';
       appState.filterPriority = 'all';
       appState.searchQuery = '';
@@ -1723,10 +1790,8 @@
       renderApp();
       scrollFeedToBottom();
 
-      // Close modal on mobile/tablet
       closeWebTriggerModal();
 
-      // Trigger loud shop-floor audio
       const isHighPriority = resolvedPriority === 'emergency' || resolvedPriority === 'urgent';
       const soundStyleToPlay = isHighPriority ? appState.prefs.soundStyle : 'standard_chime';
       await playShopFloorSound(soundStyleToPlay);
@@ -1742,9 +1807,7 @@
       const ticket = appState.tickets[ticketId];
       if (!ticket) return;
 
-      const activeRole = appState.prefs.activeRole || 'ช่างซ่อมบำรุง';
-      const roleInfo = ROLE_BADGES[activeRole] || ROLE_BADGES['ช่างซ่อมบำรุง'];
-      const actorLabel = `${roleInfo.senderName} (${activeRole})`;
+      const actorLabel = appState.prefs.activeRole || TECH_TEAM[1] || TECH_TEAM[0];
       const timeStr = formatThaiTime(new Date());
 
       ticket.status = nextStatus;
@@ -1790,7 +1853,7 @@
       const text = (rawText || '').trim();
       if (!text) return;
 
-      const role = appState.prefs.activeRole || 'ช่างซ่อมบำรุง';
+      const role = appState.prefs.activeRole || TECH_TEAM[1] || TECH_TEAM[0];
       appState.feed.push({
         id: 'chat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
         type: 'chat',
@@ -2024,17 +2087,18 @@
           }
 
           // Team member chat message bubble
-          const roleMeta = ROLE_BADGES[item.role] || ROLE_BADGES['ช่างซ่อมบำรุง'];
+          const roleMeta = getAvatarBadgeForPerson(item.role);
+          const roleCategory = getRoleCategoryFromLabel(item.role);
           const isCurrentUserRole = item.role === appState.prefs.activeRole;
 
           if (isCurrentUserRole) {
             return `
               <div class="msg-enter flex items-end justify-end gap-2">
                 <div class="bg-slate-900 text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 shadow-xs max-w-[85%] sm:max-w-[75%]">
-                  <div class="flex items-center justify-end gap-2 mb-1">
+                  <div class="flex items-center justify-end gap-2 mb-1 flex-wrap">
                     <span class="text-[10px] text-slate-400">${escapeHtml(item.time)}</span>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                      ${escapeHtml(item.role)}
+                      ${escapeHtml(roleCategory)}
                     </span>
                     <span class="text-xs font-bold text-amber-300">${escapeHtml(roleMeta.senderName)}</span>
                   </div>
@@ -2053,7 +2117,7 @@
                 <div class="flex items-center gap-2 flex-wrap mb-1">
                   <span class="text-xs font-bold text-slate-900">${escapeHtml(roleMeta.senderName)}</span>
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleMeta.pillClass}">
-                    ${escapeHtml(item.role)}
+                    ${escapeHtml(roleCategory)}
                   </span>
                   <span class="text-[10px] text-slate-400">${escapeHtml(item.time)}</span>
                 </div>
@@ -2066,7 +2130,6 @@
 
       container.innerHTML = dateBannerHtml + itemsHtml;
 
-      // Bind interactive action buttons inside ticket cards
       document.querySelectorAll('.card-action-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const tId = btn.dataset.actionTicket;
@@ -2092,7 +2155,6 @@
      * =========================================================================
      */
     function openWebTriggerModal() {
-      // On desktop (>=1024px) if split view is enabled, focus split view; otherwise open modal
       if (window.innerWidth >= 1024 && appState.prefs.desktopSplitOpen) {
         document.getElementById('inputMachineId').focus();
         return;
@@ -2160,7 +2222,6 @@
     }
 
     function bindAllEvents() {
-      // Audio unlock hero banner & banner diagnostic link
       document.getElementById('unlockAudioHeroBtn').addEventListener('click', unlockAudioAndChime);
       document.getElementById('openDiagFromBannerBtn').addEventListener('click', () => {
         syncSoundSettingsModalInputs();
@@ -2168,7 +2229,6 @@
         document.getElementById('soundSettingsModal').classList.remove('hidden');
       });
 
-      // Header quick mute/unmute toggle
       document.getElementById('quickMuteToggleBtn').addEventListener('click', async () => {
         appState.prefs.soundEnabled = !appState.prefs.soundEnabled;
         saveStateToLocalStorage();
@@ -2181,20 +2241,17 @@
         updateAudioUi();
       });
 
-      // Header sound settings button
       document.getElementById('openSoundSettingsBtn').addEventListener('click', () => {
         syncSoundSettingsModalInputs();
         updateAudioUi();
         document.getElementById('soundSettingsModal').classList.remove('hidden');
       });
 
-      // Floating Stop Urgent Alarm Button
       document.getElementById('floatingStopAlarmBtn').addEventListener('click', () => {
         stopRepeatingUrgentAlarm();
         showToast('⏹', 'หยุดเสียงเตือนฉุกเฉินแล้ว');
       });
 
-      // Open Web Trigger Modal / Split View
       document.getElementById('openWebTriggerBtn').addEventListener('click', openWebTriggerModal);
       document.getElementById('closeWebTriggerModalBtn').addEventListener('click', closeWebTriggerModal);
 
@@ -2210,7 +2267,6 @@
         applyDesktopSplitViewState();
       });
 
-      // Preset Trigger Buttons
       document.querySelectorAll('.preset-trigger-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const preset = PRESET_TICKETS[btn.dataset.presetKey];
@@ -2224,7 +2280,6 @@
         });
       });
 
-      // Custom Website Ticket Form Submit
       document.getElementById('websiteTicketForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         await createIncomingWebsiteTicket({
@@ -2236,7 +2291,6 @@
         });
       });
 
-      // Close Ticket Modal Actions
       document.getElementById('cancelCloseTicketBtn').addEventListener('click', closeCloseTicketModal);
       document.getElementById('cancelCloseTicketFooterBtn').addEventListener('click', closeCloseTicketModal);
       document.getElementById('confirmCloseTicketForm').addEventListener('submit', async (e) => {
@@ -2249,7 +2303,6 @@
         showToast('✅', `ปิดงานซ่อม ${targetId} เรียบร้อยแล้ว`);
       });
 
-      // Filter Tabs, Search & Priority Filter
       document.querySelectorAll('.status-tab-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           appState.filterStatus = btn.dataset.filterStatus;
@@ -2267,14 +2320,19 @@
         renderChatFeed();
       });
 
-      // Bottom Composer Role, Quick Reply Chips & Send Form
       const roleSelect = document.getElementById('composerRoleSelect');
-      roleSelect.value = appState.prefs.activeRole;
-      roleSelect.addEventListener('change', (e) => {
-        appState.prefs.activeRole = e.target.value;
-        saveStateToLocalStorage();
-        renderChatFeed();
-      });
+      if (roleSelect) {
+        const allPeople = [...TECH_TEAM, ...HEAD_SUPERVISORS];
+        if (!allPeople.includes(appState.prefs.activeRole)) {
+          appState.prefs.activeRole = TECH_TEAM[1] || TECH_TEAM[0];
+        }
+        roleSelect.value = appState.prefs.activeRole;
+        roleSelect.addEventListener('change', (e) => {
+          appState.prefs.activeRole = e.target.value;
+          saveStateToLocalStorage();
+          renderChatFeed();
+        });
+      }
 
       document.querySelectorAll('.quick-reply-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
@@ -2291,7 +2349,6 @@
         input.value = '';
       });
 
-      // Sound Settings Modal Controls
       document.getElementById('closeSoundSettingsBtn').addEventListener('click', () => {
         document.getElementById('soundSettingsModal').classList.add('hidden');
       });
@@ -2328,7 +2385,6 @@
         await playShopFloorSound(appState.prefs.soundStyle);
       });
 
-      // Header 3-Dots App Menu
       const menuBtn = document.getElementById('appMenuBtn');
       const menuDropdown = document.getElementById('appMenuDropdown');
 
@@ -2387,7 +2443,6 @@
         showToast('🔄', 'รีเซ็ตข้อมูลตัวอย่างเรียบร้อยแล้ว');
       });
 
-      // Copy Code Buttons inside Webhook Guide Modal (using execCommand fallback)
       document.querySelectorAll('.copy-code-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const target = document.getElementById(btn.dataset.copyTarget);
@@ -2408,7 +2463,6 @@
         });
       });
 
-      // Native PWA beforeinstallprompt listener (Chrome / Edge / Android)
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         appState.deferredInstallPrompt = e;
@@ -2423,7 +2477,6 @@
         document.getElementById('nativeInstallBox').classList.add('hidden');
       });
 
-      // Unlock Web Audio automatically on first user gesture anywhere
       document.addEventListener(
         'pointerdown',
         async () => {
@@ -2449,6 +2502,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      populateDirectoryDropdowns();
       bindAllEvents();
       applyDesktopSplitViewState();
       renderApp();
@@ -2456,4 +2510,4 @@
     });
   </script>
 </body>
-<html>
+</html>
