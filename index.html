@@ -114,6 +114,7 @@
           <span id="loginStatusDot" class="w-2 h-2 rounded-full bg-rose-400 shrink-0"></span>
           <span class="text-slate-400 shrink-0">ผู้ใช้งาน:</span>
           <span id="currentLoggedUserLabel" class="font-bold text-amber-300 truncate">ยังไม่ได้เข้าสู่ระบบ</span>
+          <span id="userRoleBadge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold"></span>
         </div>
         <button
           id="openLoginModalBtn"
@@ -488,7 +489,7 @@
       'Warehouse 2'
     ];
 
-    // รายชื่อทีมช่างซ่อมบำรุง (ตัวอย่างรหัส/ชื่อ — สามารถแก้ไขหรือเพิ่มรายชื่อจริงได้)
+    // รายชื่อทีมช่างซ่อมบำรุง (มีสิทธิ์กดรับงานและปิดงานซ่อม)
     const TECH_TEAM = [
       'M51B01 นายบัณฑิต มงคลวรผล (ผู้จัดการ)',
       'W61G08 นายณัฐพงษ์ สรภูมิ (ช่างซ่อมบำรุง)',
@@ -500,13 +501,23 @@
       'W67H08 นายมนัส นินา (ช่างซ่อมบำรุง)'
     ];
 
-    // รายชื่อหัวหน้างาน / ผู้แจ้ง (ตัวอย่างรหัส/ชื่อ — สามารถแก้ไขหรือเพิ่มรายชื่อจริงได้)
+    // รายชื่อหัวหน้างาน / ผู้แจ้ง (แจ้งซ่อมและส่งข้อความได้ แต่รับงาน/ปิดงานไม่ได้)
     const HEAD_SUPERVISORS = [
       'W54H15 น.ส.ไพริน บัวเนียม (หัวหน้างาน)',
       'W55A01 คุณวิภา (ฝ่ายผลิต)',
       'W56B02 คุณสมชาย (หัวหน้าไลน์)',
       'W57C03 คุณกิตติ (หัวหน้าโซน)'
     ];
+
+    function isTechnicianLabel(personLabel) {
+      if (!personLabel) return false;
+      return TECH_TEAM.includes(personLabel);
+    }
+
+    function isCurrentUserTechnician() {
+      const currentUser = appState.prefs.loggedInUser || '';
+      return isTechnicianLabel(currentUser);
+    }
 
     function nowTimeStr() {
       const d = new Date();
@@ -704,19 +715,33 @@
 
     function syncAutoUserIdentity(personLabel) {
       const labelEl = document.getElementById('currentLoggedUserLabel');
+      const roleBadge = document.getElementById('userRoleBadge');
       const dotEl = document.getElementById('loginStatusDot');
       const composerSelect = document.getElementById('composerRoleSelect');
       const reporterSelect = document.getElementById('inputReporter');
 
       if (!personLabel) {
         if (labelEl) labelEl.textContent = 'ยังไม่ได้เข้าสู่ระบบ';
+        if (roleBadge) roleBadge.className = 'hidden px-2 py-0.5 rounded-full text-[10px] font-bold';
         if (dotEl) dotEl.className = 'w-2 h-2 rounded-full bg-rose-400 shrink-0';
         if (composerSelect) composerSelect.disabled = false;
         if (reporterSelect) reporterSelect.disabled = false;
+        renderChatFeed();
         return;
       }
 
+      const isTech = isTechnicianLabel(personLabel);
       if (labelEl) labelEl.textContent = personLabel;
+      if (roleBadge) {
+        roleBadge.classList.remove('hidden');
+        if (isTech) {
+          roleBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+          roleBadge.textContent = 'สิทธิ์ช่าง: รับงาน/ปิดงานได้';
+        } else {
+          roleBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700 text-slate-300 border border-slate-600';
+          roleBadge.textContent = 'สิทธิ์ผู้แจ้ง/หัวหน้างาน';
+        }
+      }
       if (dotEl) dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 shrink-0';
 
       appState.prefs.loggedInUser = personLabel;
@@ -836,7 +861,7 @@
     }
 
     // ==========================================
-    // จัดการใบแจ้งซ่อม & สถานะ
+    // จัดการใบแจ้งซ่อม & สถานะ (เฉพาะช่างเท่านั้นที่รับงาน/ปิดงานได้)
     // ==========================================
     function nextTicketId() {
       const maxNum = appState.tickets.reduce((max, t) => {
@@ -869,9 +894,24 @@
     }
 
     function updateTicketStatus(ticketId, newStatus) {
-      const actor = appState.prefs.loggedInUser || document.getElementById('composerRoleSelect')?.value || TECH_TEAM[1];
+      if (!appState.prefs.loggedInUser) {
+        showToast('🔒', 'กรุณาเข้าสู่ระบบด้วยรหัสพนักงานก่อน');
+        return;
+      }
+
+      if (!isCurrentUserTechnician()) {
+        showToast('⛔', 'อนุญาตให้เฉพาะช่างซ่อมบำรุงเท่านั้นที่รับงานและปิดงานซ่อมได้');
+        return;
+      }
+
+      const actor = appState.prefs.loggedInUser;
       const ticket = appState.tickets.find((t) => t.id === ticketId);
       if (!ticket) return;
+
+      if (newStatus === 'เสร็จแล้ว' && ticket.status === 'รอรับงาน') {
+        showToast('⚠️', 'ต้องกดรับงาน / กำลังซ่อมก่อนจึงจะปิดงานซ่อมได้');
+        return;
+      }
 
       ticket.status = newStatus;
       ticket.assignedTo = actor;
@@ -925,6 +965,7 @@
       const feed = document.getElementById('chatFeed');
       if (!feed) return;
 
+      const canTechAction = isCurrentUserTechnician();
       const q = String(appState.searchQuery || '').trim().toLowerCase();
       const filtered = appState.tickets.filter((t) => {
         const matchStatus = appState.filterStatus === 'ALL' || t.status === appState.filterStatus;
@@ -951,6 +992,32 @@
           )
           .join('');
 
+        let actionButtonsHtml = '';
+        if (t.status === 'เสร็จแล้ว') {
+          actionButtonsHtml = `<span class="text-xs font-semibold text-emerald-700">✓ ปิดงานเรียบร้อยแล้ว</span>`;
+        } else if (canTechAction) {
+          actionButtonsHtml = `
+            ${t.status === 'รอรับงาน' ? `
+              <button
+                type="button"
+                onclick="updateTicketStatus('${t.id}', 'กำลังซ่อม')"
+                class="tap-btn px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold"
+              >
+                รับงาน / กำลังซ่อม
+              </button>
+            ` : ''}
+            <button
+              type="button"
+              onclick="updateTicketStatus('${t.id}', 'เสร็จแล้ว')"
+              class="tap-btn px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+            >
+              ปิดงานซ่อม
+            </button>
+          `;
+        } else {
+          actionButtonsHtml = `<span class="text-[11px] font-medium text-slate-400">🔒 เฉพาะช่างซ่อมบำรุงเท่านั้นที่รับงานและปิดงานได้</span>`;
+        }
+
         return `
           <article class="bg-white rounded-2xl border ${isUrgentPulse} shadow-xs p-3.5 sm:p-4 space-y-2.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -976,20 +1043,7 @@
             ${logsHtml ? `<div class="space-y-1.5 pt-1">${logsHtml}</div>` : ''}
 
             <div class="flex flex-wrap items-center gap-1.5 pt-1">
-              <button
-                type="button"
-                onclick="updateTicketStatus('${t.id}', 'กำลังซ่อม')"
-                class="tap-btn px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold"
-              >
-                รับงาน / กำลังซ่อม
-              </button>
-              <button
-                type="button"
-                onclick="updateTicketStatus('${t.id}', 'เสร็จแล้ว')"
-                class="tap-btn px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
-              >
-                ปิดงานซ่อม
-              </button>
+              ${actionButtonsHtml}
             </div>
           </article>
         `;
