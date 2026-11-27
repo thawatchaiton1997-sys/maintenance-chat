@@ -1,0 +1,2459 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>แจ้งซ่อมหน้างาน — Maintenance Chat PWA</title>
+
+  <!-- PWA & Mobile Home Screen App Meta Tags -->
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="application-name" content="แจ้งซ่อมหน้างาน" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="แจ้งซ่อมหน้างาน" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <link id="pwaManifestLink" rel="manifest" />
+  <link id="appleTouchIconLink" rel="apple-touch-icon" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Thai Typography: Prompt + Sarabun + Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --font-display: 'Prompt', 'Inter', system-ui, -apple-system, sans-serif;
+      --font-body: 'Sarabun', 'Prompt', 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      overscroll-behavior-y: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    h1, h2, h3, .font-display {
+      font-family: var(--font-display);
+    }
+
+    /* Clean Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+
+    /* Animations */
+    @keyframes msgPopIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .msg-enter {
+      animation: msgPopIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes urgentPulseRing {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.55);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(225, 29, 72, 0);
+      }
+    }
+    .urgent-pulse-ring {
+      animation: urgentPulseRing 1.15s infinite ease-in-out;
+    }
+
+    .tap-btn {
+      transition: transform 120ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .tap-btn:active {
+      transform: scale(0.975);
+    }
+
+    /* Hide scrollbar for horizontal chip rows */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased selection:bg-amber-400 selection:text-slate-950 h-[100dvh] flex flex-col overflow-hidden">
+
+  <!-- ===================================================================== -->
+  <!-- 1. TOP APP BAR (Sticky Full-Width Sleek Dark Slate Header)            -->
+  <!-- ===================================================================== -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 shrink-0 z-30 shadow-sm">
+    <div class="px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2">
+      <!-- App Icon & Group Title -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-bold shadow-sm shrink-0 relative">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085" />
+          </svg>
+          <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900"></span>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight text-white truncate">
+              กลุ่มแจ้งซ่อมหน้างาน
+            </h1>
+            <span class="hidden md:inline-block text-[11px] font-medium text-slate-400">
+              (Maintenance Chat)
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-slate-300">
+            <span class="inline-flex items-center gap-1 text-emerald-300 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              ออนไลน์ 6 คน
+            </span>
+            <span class="text-slate-600">•</span>
+            <span id="headerPersistenceTag" class="text-slate-400 truncate">บันทึกในเครื่องอัตโนมัติ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Action Pills & Controls -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- Audio Status Pill (Unlocked/Locked + Quick Mute/Unmute) -->
+        <div class="flex items-center rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
+          <button
+            id="quickMuteToggleBtn"
+            type="button"
+            class="tap-btn px-2.5 py-2 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-700/80"
+            title="เปิด/ปิดเสียงแจ้งเตือน"
+          >
+            <span id="headerAudioIcon" aria-hidden="true">🔔</span>
+            <span id="headerAudioStatusText" class="hidden sm:inline text-amber-300">พร้อมดัง</span>
+          </button>
+          <button
+            id="openSoundSettingsBtn"
+            type="button"
+            class="tap-btn px-2 py-2 border-l border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700/80 text-xs"
+            title="ตั้งค่าความดัง / รูปแบบเสียง / วินิจฉัยระบบเสียง"
+            aria-label="ตั้งค่าเสียงแจ้งเตือน"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Split-View Toggle (Desktop/Wide Tablet >= 1024px) -->
+        <button
+          id="toggleSplitViewBtn"
+          type="button"
+          class="hidden lg:inline-flex tap-btn items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200"
+          title="สลับโหมดเต็มจอหรือแสดงคู่กับแผงเว็บแจ้งเหตุ"
+        >
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+          <span id="splitViewLabel">มุมมองคู่เว็บ</span>
+        </button>
+
+        <!-- Primary CTA: + จำลองเว็บส่งแจ้งซ่อม -->
+        <button
+          id="openWebTriggerBtn"
+          type="button"
+          class="tap-btn px-3 sm:px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm"
+        >
+          <span>+ จำลองเว็บส่งแจ้งซ่อม</span>
+        </button>
+
+        <!-- More / App Menu Button (Install PWA, Webhook Guide, Reset) -->
+        <div class="relative">
+          <button
+            id="appMenuBtn"
+            type="button"
+            class="tap-btn p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"
+            aria-label="เมนูแอพและการติดตั้ง"
+            title="ติดตั้งแอพ / เชื่อมต่อเว็บจริง / ตั้งค่า"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+            </svg>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div
+            id="appMenuDropdown"
+            class="hidden absolute right-0 mt-2 w-72 rounded-2xl bg-white text-slate-800 shadow-xl border border-slate-200 py-1.5 z-50 text-xs"
+          >
+            <button
+              id="menuInstallPwaBtn"
+              type="button"
+              class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 font-semibold text-slate-800"
+            >
+              <span class="text-base">📲</span>
+              <div>
+                <div>วิธีติดตั้งเป็นแอพบนหน้าจอ</div>
+                <div class="text-[11px] font-normal text-slate-500">iPad / iPhone / Android / คอมพิวเตอร์</div>
+              </div>
+            </button>
+            <button
+              id="menuWebhookGuideBtn"
+              type="button"
+              class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 font-semibold text-slate-800 border-t border-slate-100"
+            >
+              <span class="text-base">🔌</span>
+              <div>
+                <div>เชื่อมต่อเว็บจริง (API / Webhook)</div>
+                <div class="text-[11px] font-normal text-slate-500">โค้ด JSON, fetch() และ Google Apps Script</div>
+              </div>
+            </button>
+            <button
+              id="menuSoundDiagBtn"
+              type="button"
+              class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 font-semibold text-slate-800 border-t border-slate-100"
+            >
+              <span class="text-base">🔊</span>
+              <div>
+                <div>ตั้งค่าเสียงดังหน้างาน & วินิจฉัยเสียง</div>
+                <div class="text-[11px] font-normal text-slate-500">บูสต์เสียง 300%, ไซเรนโรงงาน, ตรวจลำโพง</div>
+              </div>
+            </button>
+            <button
+              id="menuResetDemoBtn"
+              type="button"
+              class="w-full text-left px-4 py-2.5 hover:bg-rose-50 flex items-center gap-2.5 font-semibold text-rose-700 border-t border-slate-100"
+            >
+              <span class="text-base">🔄</span>
+              <div>
+                <div>รีเซ็ตข้อมูลตัวอย่าง</div>
+                <div class="text-[11px] font-normal text-rose-500">ล้างข้อมูลที่บันทึกและกลับสู่ค่าเริ่มต้น</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PROMINENT AUDIO UNLOCK BANNER (Shown when AudioContext is locked)   -->
+    <!-- =================================================================== -->
+    <div id="audioUnlockBanner" class="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 px-3 sm:px-5 py-2 border-t border-amber-300">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-lg shrink-0" aria-hidden="true">🔊</span>
+          <p class="text-xs sm:text-sm font-bold leading-snug">
+            เสียงแจ้งเตือนหน้างานยังไม่ถูกปลดล็อก — กดปุ่มเพื่อเปิดเสียงเตือนดังชัดเจนทันที
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            id="unlockAudioHeroBtn"
+            type="button"
+            class="tap-btn px-3.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-300 font-bold text-xs shadow-sm flex items-center gap-1.5"
+          >
+            <span>แตะเพื่อเปิดเสียงแจ้งเตือนหน้างาน</span>
+          </button>
+          <button
+            id="openDiagFromBannerBtn"
+            type="button"
+            class="tap-btn px-2.5 py-1.5 rounded-xl bg-amber-950/15 hover:bg-amber-950/25 text-slate-950 font-semibold text-xs"
+          >
+            ตรวจเช็กเสียง
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 2. QUICK STATS, STATUS TABS & SEARCH/PRIORITY FILTER BAR              -->
+  <!-- ===================================================================== -->
+  <section class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2.5 shrink-0 z-20">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
+      <!-- Status Filter Tabs with Live Counts -->
+      <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl overflow-x-auto no-scrollbar" role="tablist" aria-label="ตัวกรองสถานะงานซ่อม">
+        <button
+          type="button"
+          data-filter-status="all"
+          class="status-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white shadow-2xs whitespace-nowrap flex items-center gap-1.5"
+        >
+          <span>ทั้งหมด</span>
+          <span id="countAll" class="px-1.5 py-0.2 rounded-full text-[11px] bg-white/20">0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter-status="new"
+          class="status-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center gap-1.5"
+        >
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span>รอรับงาน</span>
+          <span id="countNew" class="px-1.5 py-0.2 rounded-full text-[11px] bg-rose-100 text-rose-800 font-bold">0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter-status="in_progress"
+          class="status-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center gap-1.5"
+        >
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span>กำลังซ่อม</span>
+          <span id="countProgress" class="px-1.5 py-0.2 rounded-full text-[11px] bg-amber-100 text-amber-900 font-bold">0</span>
+        </button>
+
+        <button
+          type="button"
+          data-filter-status="closed"
+          class="status-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center gap-1.5"
+        >
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>เสร็จแล้ว</span>
+          <span id="countClosed" class="px-1.5 py-0.2 rounded-full text-[11px] bg-emerald-100 text-emerald-800 font-bold">0</span>
+        </button>
+      </div>
+
+      <!-- Search & Priority Filter -->
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1 sm:w-64">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+          </svg>
+          <input
+            id="searchFilterInput"
+            type="search"
+            placeholder="ค้นหาเครื่องจักร, โซน, เลขใบงาน..."
+            class="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-slate-50 focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+
+        <select
+          id="priorityFilterSelect"
+          aria-label="กรองตามระดับความด่วน"
+          class="text-xs sm:text-sm rounded-xl border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          <option value="all">ทุกความด่วน</option>
+          <option value="emergency">ฉุกเฉินเท่านั้น</option>
+          <option value="urgent">ด่วนขึ้นไป</option>
+          <option value="normal">ปกติ</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 3. MAIN WORKSPACE: FULL-SCREEN GROUP CHAT + OPTIONAL SPLIT WEB PANEL  -->
+  <!-- ===================================================================== -->
+  <div id="mainWorkspace" class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT / PRIMARY: GROUP CHAT FEED + BOTTOM COMPOSER -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-100/90 relative">
+
+      <!-- Floating Urgent Alarm Stop Bar (Visible when urgent alarm is repeating) -->
+      <div
+        id="floatingUrgentAlarmBar"
+        class="hidden mx-3 sm:mx-5 mt-3 rounded-2xl bg-rose-600 text-white px-4 py-3 shadow-lg border border-rose-400 flex items-center justify-between gap-3 z-20 urgent-pulse-ring"
+      >
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-xl shrink-0" aria-hidden="true">🚨</span>
+          <div class="min-w-0">
+            <div id="urgentAlarmTitle" class="text-xs sm:text-sm font-bold truncate">
+              มีงานแจ้งซ่อมฉุกเฉินรอรับงาน!
+            </div>
+            <div class="text-[11px] text-rose-100 truncate">
+              เสียงเตือนจะดังซ้ำอัตโนมัติจนกว่าช่างจะกด "รับงาน" หรือกดหยุดเสียง
+            </div>
+          </div>
+        </div>
+        <button
+          id="floatingStopAlarmBtn"
+          type="button"
+          class="tap-btn shrink-0 px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5"
+        >
+          <span>⏹ หยุดเสียงเตือน</span>
+        </button>
+      </div>
+
+      <!-- Group Chat Timeline Scroll Area -->
+      <div
+        id="chatFeedContainer"
+        class="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-4 max-w-4xl w-full mx-auto"
+      >
+        <!-- Rendered dynamically by JS -->
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- 4. BOTTOM CHAT COMPOSER (Role Selector + Quick Chips + Input)     -->
+      <!-- ================================================================= -->
+      <footer class="bg-white border-t border-slate-200 px-3 sm:px-5 py-2.5 shrink-0 z-20">
+        <div class="max-w-4xl mx-auto space-y-2">
+          <!-- Row 1: Role Selector + Quick Reply Chips -->
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div class="flex items-center gap-1.5 shrink-0 bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1">
+              <span class="text-[11px] font-semibold text-slate-500">ผู้ส่ง:</span>
+              <select
+                id="composerRoleSelect"
+                aria-label="เลือกบทบาทผู้ส่ง"
+                class="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+              >
+                <option value="ช่างซ่อมบำรุง">ช่างเก่ง (ช่างซ่อมบำรุง)</option>
+                <option value="หัวหน้างาน">คุณสมชาย (หัวหน้างาน)</option>
+                <option value="ฝ่ายผลิต">คุณวิภา (ฝ่ายผลิต)</option>
+              </select>
+            </div>
+
+            <div class="h-4 w-[1px] bg-slate-200 shrink-0"></div>
+
+            <!-- Quick Reply Chips -->
+            <button type="button" data-quick-reply="กำลังเข้าไปตรวจสอบหน้างานครับ" class="quick-reply-chip tap-btn shrink-0 text-xs font-medium px-3 py-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200">
+              กำลังเข้าไปตรวจสอบ
+            </button>
+            <button type="button" data-quick-reply="กำลังเปลี่ยนอะไหล่และปรับตั้งค่าเครื่อง" class="quick-reply-chip tap-btn shrink-0 text-xs font-medium px-3 py-1 rounded-full bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200">
+              กำลังเปลี่ยนอะไหล่
+            </button>
+            <button type="button" data-quick-reply="ทดสอบเดินเครื่องแล้วปกติ พร้อมส่งคืนไลน์ผลิต" class="quick-reply-chip tap-btn shrink-0 text-xs font-medium px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200">
+              ทดสอบเดินเครื่องแล้วปกติ
+            </button>
+            <button type="button" data-quick-reply="รอเบิกอะไหล่จากสโตร์สักครู่ครับ" class="quick-reply-chip tap-btn shrink-0 text-xs font-medium px-3 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200">
+              รออะไหล่
+            </button>
+          </div>
+
+          <!-- Row 2: Text Input & Send Button -->
+          <form id="chatComposerForm" class="flex items-center gap-2">
+            <input
+              id="chatMessageInput"
+              type="text"
+              autocomplete="off"
+              placeholder="พิมพ์อัปเดตงานซ่อม, แจ้งอะไหล่ หรือคุยกับทีมหน้างาน..."
+              class="flex-1 text-sm rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <button
+              type="submit"
+              class="tap-btn px-4 sm:px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold flex items-center gap-1.5 shrink-0 shadow-sm"
+            >
+              <span>ส่ง</span>
+              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      </footer>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- RIGHT SPLIT PANEL (Desktop Split-View Mode)                         -->
+    <!-- =================================================================== -->
+    <aside
+      id="desktopSplitTriggerPanel"
+      class="hidden w-[420px] xl:w-[460px] bg-white border-l border-slate-200 flex-col h-full overflow-y-auto shrink-0 z-10"
+    >
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div>
+          <h2 class="text-sm font-bold flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>เว็บแจ้งเหตุ / ระบบหลังบ้าน</span>
+          </h2>
+          <p class="text-[11px] text-slate-400">ยิงใบแจ้งซ่อมจำลองเข้ากลุ่มแชททันที</p>
+        </div>
+        <button
+          id="closeDesktopSplitBtn"
+          type="button"
+          class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+        >
+          ปิดแผง
+        </button>
+      </div>
+      <div id="desktopSplitFormSlot" class="p-4"></div>
+    </aside>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL / DRAWER 1: WEBSITE / BACKEND TICKET TRIGGER                    -->
+  <!-- ===================================================================== -->
+  <div
+    id="webTriggerModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="webTriggerModalTitle"
+  >
+    <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[92dvh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between gap-2 shrink-0">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <h2 id="webTriggerModalTitle" class="text-base font-bold">
+              เว็บแจ้งเหตุ / ระบบหลังบ้าน (ส่งใบแจ้งซ่อมเข้ากลุ่ม)
+            </h2>
+          </div>
+          <p class="text-xs text-slate-300 mt-0.5">
+            จำลองฟอร์มแจ้งซ่อมจากหน้าเว็บไซต์หรือเซ็นเซอร์เครื่องจักรเพื่อยิงเข้าแอพแชทนี้
+          </p>
+        </div>
+        <button
+          id="closeWebTriggerModalBtn"
+          type="button"
+          class="tap-btn p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+          aria-label="ปิดหน้าต่าง"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div id="modalTriggerFormSlot" class="p-5 overflow-y-auto">
+        <!-- Shared Trigger Form Template Container -->
+        <div id="sharedTriggerFormContainer" class="space-y-4">
+          <!-- Quick Presets -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700">เลือกเหตุการณ์ด่วน (กดส่งทันที 1 คลิก)</span>
+              <span class="text-[11px] text-slate-400">Preset Scenarios</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                data-preset-key="emergency_stop"
+                class="preset-trigger-btn tap-btn text-left p-3 rounded-2xl border border-rose-200 bg-rose-50/80 hover:bg-rose-100"
+              >
+                <div class="flex items-center justify-between font-bold text-xs text-rose-900 mb-0.5">
+                  <span>🚨 เครื่องจักรหลักหยุดฉุกเฉิน</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white">ฉุกเฉิน</span>
+                </div>
+                <p class="text-[11px] text-rose-700">MC-CNC-01 โอเวอร์โหลด ไลน์ผลิตหยุดนิ่ง</p>
+              </button>
+
+              <button
+                type="button"
+                data-preset-key="air_pressure"
+                class="preset-trigger-btn tap-btn text-left p-3 rounded-2xl border border-orange-200 bg-orange-50/80 hover:bg-orange-100"
+              >
+                <div class="flex items-center justify-between font-bold text-xs text-orange-900 mb-0.5">
+                  <span>🔥 แรงดันลมตก / ฮีตเตอร์รั่ว</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-500 text-white">ด่วน</span>
+                </div>
+                <p class="text-[11px] text-orange-800">HTR-PKG-02 อุณหภูมิซีลต่ำกว่าเกณฑ์</p>
+              </button>
+
+              <button
+                type="button"
+                data-preset-key="conveyor_sensor"
+                class="preset-trigger-btn tap-btn text-left p-3 rounded-2xl border border-amber-200 bg-amber-50/80 hover:bg-amber-100"
+              >
+                <div class="flex items-center justify-between font-bold text-xs text-amber-900 mb-0.5">
+                  <span>⚙️ สายพานลำเลียงติดขัด</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-slate-950">ด่วน</span>
+                </div>
+                <p class="text-[11px] text-amber-800">CNV-L2-04 เซ็นเซอร์จับกล่องค้าง</p>
+              </button>
+
+              <button
+                type="button"
+                data-preset-key="label_printer"
+                class="preset-trigger-btn tap-btn text-left p-3 rounded-2xl border border-sky-200 bg-sky-50/80 hover:bg-sky-100"
+              >
+                <div class="flex items-center justify-between font-bold text-xs text-sky-900 mb-0.5">
+                  <span>📦 เครื่องพิมพ์ฉลากบาร์โค้ดเอียง</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-sky-600 text-white">ปกติ</span>
+                </div>
+                <p class="text-[11px] text-sky-800">LBL-WH-03 หัวพิมพ์สติ๊กเกอร์ติด</p>
+              </button>
+            </div>
+          </div>
+
+          <!-- Custom Website Ticket Form -->
+          <form id="websiteTicketForm" class="space-y-3 pt-3 border-t border-slate-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="inputMachineId" class="block text-xs font-bold text-slate-700 mb-1">
+                  รหัสเครื่องจักร / อุปกรณ์
+                </label>
+                <input
+                  id="inputMachineId"
+                  type="text"
+                  value="MC-CNC-04"
+                  required
+                  class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label for="inputLineZone" class="block text-xs font-bold text-slate-700 mb-1">
+                  ไลน์ผลิต / โซนหน้างาน
+                </label>
+                <select
+                  id="inputLineZone"
+                  class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="ไลน์ผลิตที่ 1 (Line 1)">ไลน์ผลิตที่ 1 (Line 1)</option>
+                  <option value="ไลน์ผลิตที่ 2 (Line 2)">ไลน์ผลิตที่ 2 (Line 2)</option>
+                  <option value="แผนกแพ็กกิ้งและคลังสินค้า (Packing)">แผนกแพ็กกิ้งและคลังสินค้า (Packing)</option>
+                  <option value="ห้องระบบลมและไฟฟ้า (Utility)">ห้องระบบลมและไฟฟ้า (Utility)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="inputPriority" class="block text-xs font-bold text-slate-700 mb-1">
+                  ระดับความเร่งด่วน
+                </label>
+                <select
+                  id="inputPriority"
+                  class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="emergency">ฉุกเฉิน (หยุดไลน์ / อันตราย)</option>
+                  <option value="urgent" selected>ด่วน (กระทบกำลังการผลิต)</option>
+                  <option value="normal">ปกติ (ตรวจเช็กตามคิว)</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="inputReporter" class="block text-xs font-bold text-slate-700 mb-1">
+                  ผู้แจ้งจากเว็บไซต์ / ระบบ
+                </label>
+                <select
+                  id="inputReporter"
+                  class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="คุณสมชาย (หัวหน้างาน)">คุณสมชาย (หัวหน้างาน)</option>
+                  <option value="คุณวิภา (ฝ่ายผลิต)">คุณวิภา (ฝ่ายผลิต)</option>
+                  <option value="ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ">ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label for="inputSymptom" class="block text-xs font-bold text-slate-700 mb-1">
+                อาการเสียที่พบ
+              </label>
+              <textarea
+                id="inputSymptom"
+                rows="2"
+                required
+                class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >หัวจับชิ้นงานสไลด์ช้าผิดปกติและมีเสียงลมรั่วบริเวณวาล์วควบคุมโซนด้านหน้า</textarea>
+            </div>
+
+            <button
+              type="submit"
+              class="tap-btn w-full py-3 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-sm shadow-sm flex items-center justify-center gap-2"
+            >
+              <span>ส่งใบแจ้งซ่อมเข้ากลุ่มแชททันที</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: CLOSE TICKET WITH OPTIONAL REPAIR NOTE / ROOT CAUSE          -->
+  <!-- ===================================================================== -->
+  <div
+    id="closeTicketModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="closeTicketModalTitle"
+  >
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-emerald-700 text-white flex items-center justify-between">
+        <div>
+          <h3 id="closeTicketModalTitle" class="text-base font-bold">ปิดงานซ่อม & บันทึกสาเหตุ</h3>
+          <p id="closeTicketSubTitle" class="text-xs text-emerald-100">TKT-XXXX</p>
+        </div>
+        <button id="cancelCloseTicketBtn" type="button" class="p-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white">
+          ✕
+        </button>
+      </div>
+
+      <form id="confirmCloseTicketForm" class="p-5 space-y-3.5">
+        <div>
+          <label for="repairRootCauseInput" class="block text-xs font-bold text-slate-700 mb-1">
+            สรุปสาเหตุและการแก้ไข / อะไหล่ที่ใช้ (ไม่บังคับ)
+          </label>
+          <textarea
+            id="repairRootCauseInput"
+            rows="3"
+            placeholder="เช่น เปลี่ยนโอริงวาล์วลมขนาด 12mm และทดสอบเดินเครื่องต่อเนื่อง 15 นาที ปกติ"
+            class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            id="cancelCloseTicketFooterBtn"
+            class="tap-btn px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="submit"
+            class="tap-btn px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm"
+          >
+            ยืนยันปิดงานซ่อม
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: SHOP-FLOOR SOUND SETTINGS & LIVE DIAGNOSTICS                 -->
+  <!-- ===================================================================== -->
+  <div
+    id="soundSettingsModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="soundSettingsTitle"
+  >
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[90dvh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <h3 id="soundSettingsTitle" class="text-base font-bold">ตั้งค่าเสียงแจ้งเตือนหน้างาน & วินิจฉัย</h3>
+          <p class="text-xs text-slate-400">ปรับความดังสูงสุด 300% พร้อมระบบบีบอัดเสียงคมชัด</p>
+        </div>
+        <button id="closeSoundSettingsBtn" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          ✕
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+        <!-- Enable/Disable Switch -->
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+          <div>
+            <div class="font-bold text-slate-800">เปิดใช้งานเสียงแจ้งเตือน</div>
+            <div class="text-xs text-slate-500">ส่งเสียงเตือนทันทีเมื่อมีใบแจ้งซ่อมเข้ากลุ่ม</div>
+          </div>
+          <input
+            id="modalSoundEnabledCheckbox"
+            type="checkbox"
+            checked
+            class="w-5 h-5 accent-amber-500 rounded cursor-pointer"
+          />
+        </div>
+
+        <!-- Sound Style Selector -->
+        <div>
+          <label for="soundStyleSelect" class="block text-xs font-bold text-slate-700 mb-1.5">
+            รูปแบบเสียงแจ้งเตือน
+          </label>
+          <select
+            id="soundStyleSelect"
+            class="w-full text-sm rounded-xl border border-slate-300 px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="factory_siren">ไซเรนโรงงาน (ดังชัดเจน ทะลุเสียงเครื่องจักร)</option>
+            <option value="dual_tone">กระดิ่งคู่ฉุกเฉิน (Dual Tone Dispatch)</option>
+            <option value="standard_chime">สัญญาณเตือนมาตรฐาน (Crisp Chime)</option>
+          </select>
+        </div>
+
+        <!-- Volume Boost Slider up to 300% -->
+        <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <label for="volumeBoostSlider" class="text-xs font-bold text-amber-950">
+              ระดับการบูสต์ความดัง (Compressor + Limiter)
+            </label>
+            <span id="volumeBoostValueLabel" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950">
+              240% (ดังมาก)
+            </span>
+          </div>
+          <input
+            id="volumeBoostSlider"
+            type="range"
+            min="80"
+            max="300"
+            step="10"
+            value="240"
+            class="w-full accent-amber-500 cursor-pointer"
+          />
+          <div class="flex justify-between text-[11px] text-amber-800">
+            <span>80% ปกติ</span>
+            <span>180% ดัง</span>
+            <span>300% สูงสุด</span>
+          </div>
+        </div>
+
+        <!-- Repeat Urgent Option -->
+        <label class="flex items-start gap-2.5 p-3 rounded-2xl bg-rose-50/60 border border-rose-200 cursor-pointer">
+          <input
+            id="repeatUrgentCheckbox"
+            type="checkbox"
+            checked
+            class="mt-0.5 w-4 h-4 accent-rose-600 rounded"
+          />
+          <div>
+            <div class="text-xs font-bold text-rose-950">วนเสียงเตือนงานด่วน/ฉุกเฉินจนกว่าจะกดรับงาน</div>
+            <div class="text-[11px] text-rose-700">ป้องกันช่างหน้างานพลาดงานสำคัญเมื่ออยู่ห่างหน้าจอ</div>
+          </div>
+        </label>
+
+        <!-- Test Sound Button -->
+        <button
+          id="modalTestSoundBtn"
+          type="button"
+          class="tap-btn w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
+        >
+          <span>🔊 ทดสอบเสียงแจ้งเตือนตอนนี้</span>
+        </button>
+
+        <!-- Live Audio Diagnostics Card -->
+        <div class="p-3.5 rounded-2xl bg-slate-900 text-slate-200 space-y-2 text-xs">
+          <div class="font-bold text-amber-300 flex items-center justify-between">
+            <span>สถานะระบบเสียง (Audio Diagnostics)</span>
+            <span id="diagOverallBadge" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px]">พร้อมทำงาน</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="p-2 rounded-xl bg-slate-800">
+              <div class="text-slate-400">Web Audio API</div>
+              <div id="diagWebAudioState" class="font-mono font-bold text-white mt-0.5">checking...</div>
+            </div>
+            <div class="p-2 rounded-xl bg-slate-800">
+              <div class="text-slate-400">HTML5 WAV Fallback</div>
+              <div id="diagWavFallbackState" class="font-mono font-bold text-emerald-300 mt-0.5">พร้อมสำรอง</div>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed pt-1 border-t border-slate-800">
+            💡 <strong>คำแนะนำสำหรับ iPad / iPhone:</strong> ตรวจสอบสวิตช์ปิดเสียงด้านข้างเครื่อง (หรือใน Control Center) ให้เปิดเสียงอยู่ และเร่งระดับเสียงสื่อ/ลำโพงให้เหมาะสม
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: INSTALL AS APP (PWA HOME SCREEN GUIDE)                       -->
+  <!-- ===================================================================== -->
+  <div
+    id="installPwaModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="installPwaTitle"
+  >
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[90dvh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <h3 id="installPwaTitle" class="text-base font-bold">วิธีติดตั้งเป็นแอพบนหน้าจอ (PWA App)</h3>
+          <p class="text-xs text-slate-400">เปิดใช้งานเต็มจอเหมือนแอพแชทจริง ไม่ต้องผ่าน App Store</p>
+        </div>
+        <button id="closeInstallPwaBtn" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          ✕
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+        <!-- Native Install Prompt Button (Chrome / Edge / Android if available) -->
+        <div id="nativeInstallBox" class="hidden p-3.5 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-amber-950">อุปกรณ์นี้รองรับการติดตั้งทันที</div>
+            <div class="text-xs text-amber-800">กดปุ่มเพื่อเพิ่มไอคอน "แจ้งซ่อมหน้างาน" ลงหน้าจอ</div>
+          </div>
+          <button
+            id="triggerNativeInstallBtn"
+            type="button"
+            class="tap-btn px-3.5 py-2 rounded-xl bg-slate-900 text-amber-300 font-bold text-xs shrink-0"
+          >
+            ติดตั้งแอพทันที
+          </button>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+          <div class="font-bold text-slate-900 flex items-center gap-2">
+            <span>🍎 สำหรับ iPad / iPhone (Safari)</span>
+          </div>
+          <ol class="list-decimal list-inside space-y-1 text-xs text-slate-700 leading-relaxed">
+            <li>เปิดหน้าเว็บนี้ด้วยเบราว์เซอร์ <strong>Safari</strong></li>
+            <li>แตะปุ่ม <strong>แชร์ (Share)</strong> ที่แถบเครื่องมือ (ไอคอนสี่เหลี่ยมมีลูกศรชี้ขึ้น)</li>
+            <li>เลื่อนลงแล้วเลือก <strong>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</strong></li>
+            <li>กด <strong>"เพิ่ม" (Add)</strong> จะได้ไอคอนแอพ <strong>แจ้งซ่อมหน้างาน</strong> บนหน้าจอทันที</li>
+          </ol>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+          <div class="font-bold text-slate-900 flex items-center gap-2">
+            <span>🤖 สำหรับ Android / แท็บเล็ต (Chrome)</span>
+          </div>
+          <ol class="list-decimal list-inside space-y-1 text-xs text-slate-700 leading-relaxed">
+            <li>แตะเมนูจุดสามจุด <strong>⋮</strong> มุมขวาบนของ Chrome</li>
+            <li>เลือก <strong>"ติดตั้งแอป" (Install app)</strong> หรือ <strong>"เพิ่มลงในหน้าจอหลัก"</strong></li>
+            <li>กดยืนยันเพื่อเปิดใช้งานแบบเต็มหน้าจอ</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5: CONNECT REAL WEBSITE (API / WEBHOOK INTEGRATION GUIDE)       -->
+  <!-- ===================================================================== -->
+  <div
+    id="webhookGuideModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="webhookGuideTitle"
+  >
+    <div class="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 max-h-[90dvh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <h3 id="webhookGuideTitle" class="text-base font-bold">เชื่อมต่อเว็บไซต์จริงเข้าแอพแชท (API / Webhook)</h3>
+          <p class="text-xs text-slate-400">ตัวอย่างโครงสร้างข้อมูล JSON และโค้ดสำหรับส่งจากเว็บแจ้งซ่อมของคุณ</p>
+        </div>
+        <button id="closeWebhookGuideBtn" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          ✕
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <p class="text-slate-600 leading-relaxed">
+          เมื่อนำแอพนี้ไปต่อกับฐานข้อมูลกลาง (เช่น <strong>Firebase Firestore</strong>, <strong>Supabase</strong> หรือ <strong>Node.js + WebSocket</strong>) เว็บไซต์แจ้งซ่อมของคุณสามารถยิงข้อมูลรูปแบบนี้เข้าห้องแชทได้ทันทีโดยไม่เสียค่าโควตารายเดือนเหมือน LINE:
+        </p>
+
+        <!-- JSON Payload Block -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">1. โครงสร้าง JSON Payload มาตรฐาน</span>
+            <button
+              type="button"
+              data-copy-target="codeJsonPayload"
+              class="copy-code-btn tap-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
+            >
+              คัดลอก JSON
+            </button>
+          </div>
+          <pre id="codeJsonPayload" class="bg-slate-900 text-amber-300 p-3.5 rounded-2xl overflow-x-auto font-mono text-[11px] leading-relaxed">{
+  "machineId": "MC-CNC-04",
+  "lineZone": "ไลน์ผลิตที่ 1 (Line 1)",
+  "priority": "urgent",
+  "symptom": "หัวจับชิ้นงานสไลด์ช้าผิดปกติและมีเสียงลมรั่ว",
+  "reporter": "คุณสมชาย (หัวหน้างาน)",
+  "source": "web-portal"
+}</pre>
+        </div>
+
+        <!-- JavaScript fetch() Snippet -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">2. ตัวอย่างโค้ด JavaScript fetch() จากหน้าเว็บของคุณ</span>
+            <button
+              type="button"
+              data-copy-target="codeJsFetch"
+              class="copy-code-btn tap-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
+            >
+              คัดลอกโค้ด JS
+            </button>
+          </div>
+          <pre id="codeJsFetch" class="bg-slate-900 text-emerald-300 p-3.5 rounded-2xl overflow-x-auto font-mono text-[11px] leading-relaxed">async function sendRepairAlertToApp(ticketData) {
+  const res = await fetch("https://your-backend-domain.com/api/maintenance/tickets", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer YOUR_SECRET_WEBHOOK_TOKEN"
+    },
+    body: JSON.stringify(ticketData)
+  });
+  return await res.json();
+}</pre>
+        </div>
+
+        <!-- Google Apps Script Snippet -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">3. ตัวอย่าง Google Apps Script (ยิงจาก Google Form / Sheets)</span>
+            <button
+              type="button"
+              data-copy-target="codeGasSnippet"
+              class="copy-code-btn tap-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
+            >
+              คัดลอกโค้ด GAS
+            </button>
+          </div>
+          <pre id="codeGasSnippet" class="bg-slate-900 text-sky-300 p-3.5 rounded-2xl overflow-x-auto font-mono text-[11px] leading-relaxed">function onFormSubmit(e) {
+  const payload = {
+    machineId: e.namedValues["รหัสเครื่องจักร"][0],
+    lineZone: e.namedValues["ไลน์ผลิต"][0],
+    priority: "urgent",
+    symptom: e.namedValues["อาการเสีย"][0],
+    reporter: e.namedValues["ผู้แจ้ง"][0]
+  };
+  UrlFetchApp.fetch("https://your-backend-domain.com/api/maintenance/tickets", {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload)
+  });
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Pill -->
+  <div
+    id="appToast"
+    class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-slate-900 text-white text-xs sm:text-sm font-semibold shadow-xl border border-slate-700 flex items-center gap-2 max-w-[92vw]"
+  >
+    <span id="appToastIcon">✅</span>
+    <span id="appToastText" class="truncate">บันทึกเรียบร้อย</span>
+  </div>
+
+  <script>
+    /**
+     * =========================================================================
+     * 1. DYNAMIC PWA MANIFEST & APPLE TOUCH ICON SETUP (SINGLE-FILE PWA)
+     * =========================================================================
+     */
+    (function setupDynamicPwaManifest() {
+      try {
+        const svgIcon = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <rect width="512" height="512" rx="112" fill="#0f172a"/>
+            <rect x="36" y="36" width="440" height="440" rx="88" fill="#1e293b" stroke="#f59e0b" stroke-width="14"/>
+            <path d="M332 148a78 78 0 0 0-97 97l-98 98a28 28 0 0 0 40 40l98-98a78 78 0 0 0 97-97l-44 44-32-8-8-32 44-44z" fill="#fbbf24"/>
+            <circle cx="388" cy="124" r="28" fill="#10b981"/>
+          </svg>
+        `.trim();
+
+        const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon);
+        const appleLink = document.getElementById('appleTouchIconLink');
+        if (appleLink) appleLink.href = svgDataUrl;
+
+        const manifestObj = {
+          name: 'แจ้งซ่อมหน้างาน — Maintenance Chat',
+          short_name: 'แจ้งซ่อมหน้างาน',
+          description: 'แอพแชทกลุ่มแจ้งซ่อมหน้างาน รับแจ้งเตือนจากเว็บไซต์แบบเรียลไทม์พร้อมเสียงเตือนดังชัดเจน',
+          start_url: window.location.href,
+          display: 'standalone',
+          orientation: 'any',
+          background_color: '#0f172a',
+          theme_color: '#0f172a',
+          icons: [
+            {
+              src: svgDataUrl,
+              sizes: '192x192 512x512',
+              type: 'image/svg+xml',
+              purpose: 'any maskable'
+            }
+          ]
+        };
+
+        const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+        const manifestUrl = URL.createObjectURL(blob);
+        const manifestLink = document.getElementById('pwaManifestLink');
+        if (manifestLink) manifestLink.href = manifestUrl;
+      } catch (_err) {
+        // Graceful fallback if Blob URL is restricted
+      }
+    })();
+
+    /**
+     * =========================================================================
+     * 2. STATE & LOCALSTORAGE PERSISTENCE
+     * =========================================================================
+     */
+    const STORAGE_KEY = 'maintenance_chat_pwa_v1';
+
+    const PRESET_TICKETS = {
+      emergency_stop: {
+        machineId: 'MC-CNC-01',
+        lineZone: 'ไลน์ผลิตที่ 1 (Line 1)',
+        priority: 'emergency',
+        reporter: 'คุณสมชาย (หัวหน้างาน)',
+        symptom: 'สปินเดิลหยุดหมุนกะทันหันและขึ้นโค้ด Overload จำเป็นต้องหยุดไลน์ผลิตชั่วคราว'
+      },
+      air_pressure: {
+        machineId: 'HTR-PKG-02',
+        lineZone: 'แผนกแพ็กกิ้งและคลังสินค้า (Packing)',
+        priority: 'urgent',
+        reporter: 'คุณวิภา (ฝ่ายผลิต)',
+        symptom: 'อุณหภูมิฮีตเตอร์ซีลตกจาก 185°C เหลือ 146°C และมีเสียงลมรั่วที่ชุดวาล์ว'
+      },
+      conveyor_sensor: {
+        machineId: 'CNV-L2-04',
+        lineZone: 'ไลน์ผลิตที่ 2 (Line 2)',
+        priority: 'urgent',
+        reporter: 'ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ',
+        symptom: 'เซ็นเซอร์โฟโต้สวิตช์ตรวจจับชิ้นงานค้าง ทำให้สายพานลำเลียงหยุดอัตโนมัติ'
+      },
+      label_printer: {
+        machineId: 'LBL-WH-03',
+        lineZone: 'แผนกแพ็กกิ้งและคลังสินค้า (Packing)',
+        priority: 'normal',
+        reporter: 'คุณวิภา (ฝ่ายผลิต)',
+        symptom: 'หัวพิมพ์สติ๊กเกอร์บาร์โค้ดป้อนกระดาษเอียงเล็กน้อย ต้องการให้ช่างช่วยปรับตั้ง'
+      }
+    };
+
+    const PRIORITY_META = {
+      emergency: {
+        label: 'ฉุกเฉิน',
+        badgeClass: 'bg-rose-600 text-white border-rose-700',
+        cardBorderClass: 'border-rose-300 ring-2 ring-rose-100'
+      },
+      urgent: {
+        label: 'ด่วน',
+        badgeClass: 'bg-orange-500 text-white border-orange-600',
+        cardBorderClass: 'border-orange-300 ring-1 ring-orange-100'
+      },
+      normal: {
+        label: 'ปกติ',
+        badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+        cardBorderClass: 'border-slate-200'
+      }
+    };
+
+    const STATUS_META = {
+      new: {
+        label: 'รอรับงาน',
+        badgeClass: 'bg-rose-100 text-rose-800 border-rose-200'
+      },
+      in_progress: {
+        label: 'กำลังซ่อม',
+        badgeClass: 'bg-amber-100 text-amber-900 border-amber-300'
+      },
+      closed: {
+        label: 'เสร็จแล้ว',
+        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      }
+    };
+
+    const ROLE_BADGES = {
+      'ช่างซ่อมบำรุง': {
+        senderName: 'ช่างเก่ง',
+        avatarText: 'ชก',
+        avatarBg: 'bg-amber-500 text-slate-950',
+        pillClass: 'bg-amber-100 text-amber-900 border-amber-200'
+      },
+      'หัวหน้างาน': {
+        senderName: 'คุณสมชาย',
+        avatarText: 'สช',
+        avatarBg: 'bg-sky-600 text-white',
+        pillClass: 'bg-sky-100 text-sky-900 border-sky-200'
+      },
+      'ฝ่ายผลิต': {
+        senderName: 'คุณวิภา',
+        avatarText: 'วภ',
+        avatarBg: 'bg-emerald-600 text-white',
+        pillClass: 'bg-emerald-100 text-emerald-900 border-emerald-200'
+      }
+    };
+
+    function formatThaiTime(dateObj) {
+      return dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    }
+
+    function createDefaultData() {
+      const now = Date.now();
+      return {
+        nextTicketNumber: 2504,
+        tickets: {
+          'TKT-2501': {
+            ticketId: 'TKT-2501',
+            machineId: 'LBL-PKG-04',
+            lineZone: 'แผนกแพ็กกิ้งและคลังสินค้า (Packing)',
+            priority: 'normal',
+            symptom: 'หัวพิมพ์บาร์โค้ดติดสติ๊กเกอร์เอียงและเซ็นเซอร์ตรวจจับกล่องไม่ทำงานบางจังหวะ',
+            reporter: 'คุณวิภา (ฝ่ายผลิต)',
+            status: 'closed',
+            assignedTo: 'ช่างเก่ง (ช่างซ่อมบำรุง)',
+            resolutionNote: 'ทำความสะอาดหัวพิมพ์และปรับระยะเซ็นเซอร์เรียบร้อย เทสผ่าน 50 กล่อง',
+            createdAt: formatThaiTime(new Date(now - 95 * 60 * 1000))
+          },
+          'TKT-2502': {
+            ticketId: 'TKT-2502',
+            machineId: 'MC-MILL-01',
+            lineZone: 'ไลน์ผลิตที่ 1 (Line 1)',
+            priority: 'urgent',
+            symptom: 'แกนป้อนชิ้นงานสั่นผิดปกติและมีเสียงดังจากชุดเฟืองขับด้านซ้าย',
+            reporter: 'คุณสมชาย (หัวหน้างาน)',
+            status: 'in_progress',
+            assignedTo: 'ช่างเก่ง (ช่างซ่อมบำรุง)',
+            resolutionNote: '',
+            createdAt: formatThaiTime(new Date(now - 34 * 60 * 1000))
+          },
+          'TKT-2503': {
+            ticketId: 'TKT-2503',
+            machineId: 'AIR-UTIL-02',
+            lineZone: 'ห้องระบบลมและไฟฟ้า (Utility)',
+            priority: 'emergency',
+            symptom: 'แรงดันลมหลักในโซนไลน์ 2 ลดลงจาก 6.8 bar เหลือ 5.0 bar ตรวจพบจุดรั่วที่วาล์วแยก',
+            reporter: 'ระบบ SCADA / เว็บแจ้งเหตุอัตโนมัติ',
+            status: 'new',
+            assignedTo: '',
+            resolutionNote: '',
+            createdAt: formatThaiTime(new Date(now - 8 * 60 * 1000))
+          }
+        },
+        feed: [
+          {
+            id: 'item-1',
+            type: 'ticket',
+            ticketId: 'TKT-2501',
+            time: formatThaiTime(new Date(now - 95 * 60 * 1000))
+          },
+          {
+            id: 'item-2',
+            type: 'chat',
+            role: 'ช่างซ่อมบำรุง',
+            text: 'ทำความสะอาดหัวพิมพ์และปรับระยะเซ็นเซอร์ LBL-PKG-04 เรียบร้อยครับ พร้อมเดินเครื่องต่อได้เลย',
+            time: formatThaiTime(new Date(now - 74 * 60 * 1000))
+          },
+          {
+            id: 'item-3',
+            type: 'ticket',
+            ticketId: 'TKT-2502',
+            time: formatThaiTime(new Date(now - 34 * 60 * 1000))
+          },
+          {
+            id: 'item-4',
+            type: 'system',
+            ticketId: 'TKT-2502',
+            actor: 'ช่างเก่ง (ช่างซ่อมบำรุง)',
+            status: 'in_progress',
+            text: 'รับงานซ่อม TKT-2502 (MC-MILL-01) และเริ่มเข้าตรวจสอบหน้างาน',
+            time: formatThaiTime(new Date(now - 29 * 60 * 1000))
+          },
+          {
+            id: 'item-5',
+            type: 'ticket',
+            ticketId: 'TKT-2503',
+            time: formatThaiTime(new Date(now - 8 * 60 * 1000))
+          }
+        ],
+        prefs: {
+          activeRole: 'ช่างซ่อมบำรุง',
+          soundEnabled: true,
+          soundStyle: 'factory_siren', // 'factory_siren' | 'dual_tone' | 'standard_chime'
+          volumeBoost: 240, // 80 - 300
+          repeatUrgent: true,
+          desktopSplitOpen: false
+        }
+      };
+    }
+
+    function loadPersistedState() {
+      const defaults = createDefaultData();
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaults;
+        const parsed = JSON.parse(raw);
+        return {
+          nextTicketNumber: parsed.nextTicketNumber || defaults.nextTicketNumber,
+          tickets: parsed.tickets || defaults.tickets,
+          feed: Array.isArray(parsed.feed) ? parsed.feed : defaults.feed,
+          prefs: { ...defaults.prefs, ...(parsed.prefs || {}) }
+        };
+      } catch (_err) {
+        return defaults;
+      }
+    }
+
+    const persisted = loadPersistedState();
+
+    const appState = {
+      nextTicketNumber: persisted.nextTicketNumber,
+      tickets: persisted.tickets,
+      feed: persisted.feed,
+      prefs: persisted.prefs,
+      filterStatus: 'all',
+      filterPriority: 'all',
+      searchQuery: '',
+      audioUnlocked: false,
+      activeUrgentTicketId: null,
+      pendingCloseTicketId: null,
+      deferredInstallPrompt: null
+    };
+
+    function saveStateToLocalStorage() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            nextTicketNumber: appState.nextTicketNumber,
+            tickets: appState.tickets,
+            feed: appState.feed,
+            prefs: appState.prefs
+          })
+        );
+      } catch (_err) {
+        // Ignore storage quota errors
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 3. RELIABLE LOUD SHOP-FLOOR SOUND ENGINE (WEB AUDIO + WAV DATA-URI)
+     * =========================================================================
+     */
+    let audioCtx = null;
+    let urgentRepeatTimer = null;
+    const wavCache = {};
+
+    function getAudioContext() {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!audioCtx || audioCtx.state === 'closed') {
+        audioCtx = new Ctx();
+      }
+      return audioCtx;
+    }
+
+    function makeSoftSaturationCurve(amount = 24) {
+      const n = 44100;
+      const curve = new Float32Array(n);
+      const deg = Math.PI / 180;
+      for (let i = 0; i < n; i++) {
+        const x = (i * 2) / n - 1;
+        curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+      }
+      return curve;
+    }
+
+    function createBoostedOutputChain(ctx, boostPercent) {
+      const boostGain = ctx.createGain();
+      boostGain.gain.setValueAtTime(Math.max(0.5, Math.min(3.0, boostPercent / 100)), ctx.currentTime);
+
+      const shaper = ctx.createWaveShaper();
+      shaper.curve = makeSoftSaturationCurve(boostPercent > 180 ? 28 : 14);
+      shaper.oversample = '2x';
+
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-15, ctx.currentTime);
+      compressor.knee.setValueAtTime(10, ctx.currentTime);
+      compressor.ratio.setValueAtTime(9, ctx.currentTime);
+      compressor.attack.setValueAtTime(0.002, ctx.currentTime);
+      compressor.release.setValueAtTime(0.14, ctx.currentTime);
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.96, ctx.currentTime);
+
+      boostGain.connect(shaper);
+      shaper.connect(compressor);
+      compressor.connect(masterGain);
+      masterGain.connect(ctx.destination);
+
+      return boostGain;
+    }
+
+    /**
+     * Generate PCM WAV Data URI for rock-solid HTML5 Audio fallback on mobile/iframe
+     */
+    function getWavFallbackUrl(style, boostPercent) {
+      const key = `${style}_${boostPercent}`;
+      if (wavCache[key]) return wavCache[key];
+
+      const sampleRate = 22050;
+      const durationSec = style === 'factory_siren' ? 1.15 : 0.95;
+      const totalSamples = Math.floor(sampleRate * durationSec);
+      const boost = Math.max(0.6, Math.min(2.8, boostPercent / 100));
+
+      const pulses =
+        style === 'factory_siren'
+          ? [
+              { f0: 960, f1: 1850, start: 0.0, dur: 0.34, amp: 0.72 },
+              { f0: 1850, f1: 1120, start: 0.35, dur: 0.24, amp: 0.72 },
+              { f0: 1050, f1: 2150, start: 0.62, dur: 0.48, amp: 0.75 }
+            ]
+          : style === 'dual_tone'
+            ? [
+                { f0: 1244, f1: 1244, start: 0.0, dur: 0.14, amp: 0.68 },
+                { f0: 1975, f1: 1975, start: 0.15, dur: 0.15, amp: 0.68 },
+                { f0: 1244, f1: 1244, start: 0.33, dur: 0.14, amp: 0.68 },
+                { f0: 2349, f1: 2349, start: 0.48, dur: 0.20, amp: 0.72 },
+                { f0: 1975, f1: 2489, start: 0.71, dur: 0.22, amp: 0.72 }
+              ]
+            : [
+                { f0: 1046.5, f1: 1046.5, start: 0.0, dur: 0.18, amp: 0.60 },
+                { f0: 1568.0, f1: 1568.0, start: 0.17, dur: 0.25, amp: 0.62 },
+                { f0: 1318.5, f1: 1318.5, start: 0.46, dur: 0.18, amp: 0.60 },
+                { f0: 2093.0, f1: 2093.0, start: 0.63, dur: 0.28, amp: 0.65 }
+              ];
+
+      const samples = new Int16Array(totalSamples);
+      for (let i = 0; i < totalSamples; i++) {
+        const t = i / sampleRate;
+        let sum = 0;
+        for (let p = 0; p < pulses.length; p++) {
+          const ev = pulses[p];
+          if (t >= ev.start && t <= ev.start + ev.dur) {
+            const lt = t - ev.start;
+            const env = Math.min(1, lt / 0.01) * Math.min(1, (ev.dur - lt) / 0.02);
+            const freq = ev.f0 + ((ev.f1 - ev.f0) * lt) / Math.max(0.001, ev.dur);
+            const fund = Math.sin(2 * Math.PI * freq * t);
+            const harm = 0.36 * Math.sin(2 * Math.PI * freq * 2 * t);
+            sum += (fund + harm) * ev.amp * Math.max(0, env);
+          }
+        }
+        const limited = Math.tanh(sum * boost * 0.85);
+        samples[i] = Math.max(-32768, Math.min(32767, Math.round(limited * 32767)));
+      }
+
+      const byteLen = samples.length * 2;
+      const buf = new ArrayBuffer(44 + byteLen);
+      const view = new DataView(buf);
+      const writeStr = (off, s) => {
+        for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+      };
+
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + byteLen, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, 'data');
+      view.setUint32(40, byteLen, true);
+      for (let i = 0; i < samples.length; i++) {
+        view.setInt16(44 + i * 2, samples[i], true);
+      }
+
+      let bin = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      }
+      const url = 'data:audio/wav;base64,' + btoa(bin);
+      wavCache[key] = url;
+      return url;
+    }
+
+    async function playWavFallback(style, boostPercent) {
+      try {
+        const audio = new Audio(getWavFallbackUrl(style, boostPercent));
+        audio.volume = Math.min(1.0, Math.max(0.35, boostPercent / 140));
+        await audio.play();
+        appState.audioUnlocked = true;
+        updateAudioUi();
+        return true;
+      } catch (_err) {
+        return false;
+      }
+    }
+
+    async function playShopFloorSound(forceStyle = null) {
+      if (!appState.prefs.soundEnabled) {
+        updateAudioUi();
+        return false;
+      }
+
+      const style = forceStyle || appState.prefs.soundStyle || 'factory_siren';
+      const boost = appState.prefs.volumeBoost || 240;
+
+      try {
+        const ctx = getAudioContext();
+        if (ctx && ctx.state === 'suspended') {
+          try {
+            await ctx.resume();
+          } catch (_e) {
+            // Fall through to WAV fallback
+          }
+        }
+
+        if (ctx && ctx.state === 'running') {
+          const out = createBoostedOutputChain(ctx, boost);
+          const now = ctx.currentTime;
+
+          if (style === 'factory_siren') {
+            // Industrial sweeping siren cut-through burst
+            const sweeps = [
+              { fStart: 950, fEnd: 1920, start: 0.0, dur: 0.34, type: 'sawtooth', peak: 0.25 },
+              { fStart: 1920, fEnd: 1120, start: 0.35, dur: 0.24, type: 'sawtooth', peak: 0.23 },
+              { fStart: 1050, fEnd: 2240, start: 0.61, dur: 0.46, type: 'square', peak: 0.22 }
+            ];
+            sweeps.forEach((s) => {
+              const osc = ctx.createOscillator();
+              const g = ctx.createGain();
+              osc.type = s.type;
+              osc.frequency.setValueAtTime(s.fStart, now + s.start);
+              osc.frequency.exponentialRampToValueAtTime(s.fEnd, now + s.start + s.dur);
+              g.gain.setValueAtTime(0.0001, now + s.start);
+              g.gain.exponentialRampToValueAtTime(s.peak, now + s.start + 0.015);
+              g.gain.exponentialRampToValueAtTime(0.0001, now + s.start + s.dur);
+              osc.connect(g);
+              g.connect(out);
+              osc.start(now + s.start);
+              osc.stop(now + s.start + s.dur + 0.03);
+            });
+          } else if (style === 'dual_tone') {
+            const notes = [
+              { freq: 1244.51, start: 0.0, dur: 0.13, type: 'square', peak: 0.22 },
+              { freq: 1975.53, start: 0.14, dur: 0.14, type: 'sawtooth', peak: 0.24 },
+              { freq: 1244.51, start: 0.31, dur: 0.13, type: 'square', peak: 0.22 },
+              { freq: 2349.32, start: 0.45, dur: 0.19, type: 'sawtooth', peak: 0.25 },
+              { freq: 2489.02, start: 0.68, dur: 0.24, type: 'square', peak: 0.23 }
+            ];
+            notes.forEach((n) => {
+              const osc = ctx.createOscillator();
+              const g = ctx.createGain();
+              osc.type = n.type;
+              osc.frequency.setValueAtTime(n.freq, now + n.start);
+              g.gain.setValueAtTime(0.0001, now + n.start);
+              g.gain.exponentialRampToValueAtTime(n.peak, now + n.start + 0.01);
+              g.gain.exponentialRampToValueAtTime(0.0001, now + n.start + n.dur);
+              osc.connect(g);
+              g.connect(out);
+              osc.start(now + n.start);
+              osc.stop(now + n.start + n.dur + 0.03);
+            });
+          } else {
+            const notes = [
+              { freq: 1046.5, start: 0.0, dur: 0.17, type: 'triangle', peak: 0.26 },
+              { freq: 1567.98, start: 0.16, dur: 0.24, type: 'sine', peak: 0.26 },
+              { freq: 1318.51, start: 0.44, dur: 0.17, type: 'triangle', peak: 0.26 },
+              { freq: 2093.0, start: 0.60, dur: 0.28, type: 'sine', peak: 0.26 }
+            ];
+            notes.forEach((n) => {
+              const osc = ctx.createOscillator();
+              const g = ctx.createGain();
+              osc.type = n.type;
+              osc.frequency.setValueAtTime(n.freq, now + n.start);
+              g.gain.setValueAtTime(0.0001, now + n.start);
+              g.gain.exponentialRampToValueAtTime(n.peak, now + n.start + 0.012);
+              g.gain.exponentialRampToValueAtTime(0.0001, now + n.start + n.dur);
+              osc.connect(g);
+              g.connect(out);
+              osc.start(now + n.start);
+              osc.stop(now + n.start + n.dur + 0.03);
+            });
+          }
+
+          appState.audioUnlocked = true;
+          updateAudioUi();
+          return true;
+        }
+      } catch (_err) {
+        // Fallback to WAV
+      }
+
+      return await playWavFallback(style, boost);
+    }
+
+    async function unlockAudioAndChime() {
+      appState.prefs.soundEnabled = true;
+      saveStateToLocalStorage();
+      const ok = await playShopFloorSound(appState.prefs.soundStyle);
+      if (ok) {
+        appState.audioUnlocked = true;
+        showToast('🔔', 'เปิดเสียงแจ้งเตือนหน้างานเรียบร้อยแล้ว');
+      } else {
+        showToast('⚠️', 'กรุณาตรวจสอบสวิตช์ปิดเสียงและระดับเสียงของอุปกรณ์');
+      }
+      updateAudioUi();
+      return ok;
+    }
+
+    function startRepeatingUrgentAlarm(ticket) {
+      if (!appState.prefs.repeatUrgent || !appState.prefs.soundEnabled) return;
+      stopRepeatingUrgentAlarm();
+      appState.activeUrgentTicketId = ticket.ticketId;
+
+      const bar = document.getElementById('floatingUrgentAlarmBar');
+      const title = document.getElementById('urgentAlarmTitle');
+      if (title) {
+        title.textContent = `🚨 งาน${PRIORITY_META[ticket.priority]?.label || 'ด่วน'} ${ticket.ticketId} • ${ticket.machineId} (${ticket.lineZone})`;
+      }
+      if (bar) bar.classList.remove('hidden');
+
+      urgentRepeatTimer = setInterval(async () => {
+        const current = appState.tickets[appState.activeUrgentTicketId];
+        if (!current || current.status !== 'new' || !appState.prefs.soundEnabled) {
+          stopRepeatingUrgentAlarm();
+          return;
+        }
+        await playShopFloorSound(appState.prefs.soundStyle);
+      }, 3400);
+    }
+
+    function stopRepeatingUrgentAlarm() {
+      if (urgentRepeatTimer !== null) {
+        clearInterval(urgentRepeatTimer);
+        urgentRepeatTimer = null;
+      }
+      appState.activeUrgentTicketId = null;
+      const bar = document.getElementById('floatingUrgentAlarmBar');
+      if (bar) bar.classList.add('hidden');
+    }
+
+    function updateAudioUi() {
+      const iconEl = document.getElementById('headerAudioIcon');
+      const textEl = document.getElementById('headerAudioStatusText');
+      const bannerEl = document.getElementById('audioUnlockBanner');
+      const diagWebAudio = document.getElementById('diagWebAudioState');
+      const diagOverall = document.getElementById('diagOverallBadge');
+
+      const ctxState = audioCtx ? audioCtx.state : 'uninitialized';
+      if (diagWebAudio) {
+        diagWebAudio.textContent = ctxState;
+      }
+
+      if (!appState.prefs.soundEnabled) {
+        if (iconEl) iconEl.textContent = '🔇';
+        if (textEl) {
+          textEl.textContent = 'ปิดเสียง';
+          textEl.className = 'hidden sm:inline text-slate-400';
+        }
+        if (bannerEl) bannerEl.classList.add('hidden');
+        if (diagOverall) {
+          diagOverall.textContent = 'ปิดเสียงอยู่';
+          diagOverall.className = 'px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 text-[11px]';
+        }
+        return;
+      }
+
+      if (appState.audioUnlocked || ctxState === 'running') {
+        appState.audioUnlocked = true;
+        if (iconEl) iconEl.textContent = '🔔';
+        if (textEl) {
+          textEl.textContent = `ดัง ${appState.prefs.volumeBoost}%`;
+          textEl.className = 'hidden sm:inline text-emerald-300 font-bold';
+        }
+        if (bannerEl) bannerEl.classList.add('hidden');
+        if (diagOverall) {
+          diagOverall.textContent = 'ปลดล็อกพร้อมดัง';
+          diagOverall.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px]';
+        }
+      } else {
+        if (iconEl) iconEl.textContent = '🔕';
+        if (textEl) {
+          textEl.textContent = 'แตะเปิดเสียง';
+          textEl.className = 'hidden sm:inline text-amber-300 font-bold';
+        }
+        if (bannerEl) bannerEl.classList.remove('hidden');
+        if (diagOverall) {
+          diagOverall.textContent = 'รอปลดล็อกเสียง';
+          diagOverall.className = 'px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px]';
+        }
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 4. CORE TICKET & GROUP CHAT ACTIONS
+     * =========================================================================
+     */
+    function escapeHtml(val) {
+      const div = document.createElement('div');
+      div.textContent = String(val ?? '');
+      return div.innerHTML;
+    }
+
+    let toastTimer = null;
+    function showToast(icon, message) {
+      const toast = document.getElementById('appToast');
+      const iconEl = document.getElementById('appToastIcon');
+      const textEl = document.getElementById('appToastText');
+      if (!toast) return;
+      iconEl.textContent = icon;
+      textEl.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3200);
+    }
+
+    async function createIncomingWebsiteTicket({ machineId, lineZone, priority, symptom, reporter }) {
+      const cleanMachine = (machineId || '').trim();
+      const cleanSymptom = (symptom || '').trim();
+      if (!cleanMachine || !cleanSymptom) {
+        showToast('⚠️', 'กรุณาระบุรหัสเครื่องจักรและอาการเสีย');
+        return;
+      }
+
+      const ticketId = `TKT-${appState.nextTicketNumber++}`;
+      const timeStr = formatThaiTime(new Date());
+      const resolvedPriority = PRIORITY_META[priority] ? priority : 'normal';
+
+      const newTicket = {
+        ticketId,
+        machineId: cleanMachine,
+        lineZone,
+        priority: resolvedPriority,
+        symptom: cleanSymptom,
+        reporter,
+        status: 'new',
+        assignedTo: '',
+        resolutionNote: '',
+        createdAt: timeStr
+      };
+
+      appState.tickets[ticketId] = newTicket;
+      appState.feed.push({
+        id: 'feed-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        type: 'ticket',
+        ticketId,
+        time: timeStr
+      });
+
+      // Reset filters so the new ticket is immediately visible in feed
+      appState.filterStatus = 'all';
+      appState.filterPriority = 'all';
+      appState.searchQuery = '';
+      document.getElementById('searchFilterInput').value = '';
+      document.getElementById('priorityFilterSelect').value = 'all';
+
+      saveStateToLocalStorage();
+      renderApp();
+      scrollFeedToBottom();
+
+      // Close modal on mobile/tablet
+      closeWebTriggerModal();
+
+      // Trigger loud shop-floor audio
+      const isHighPriority = resolvedPriority === 'emergency' || resolvedPriority === 'urgent';
+      const soundStyleToPlay = isHighPriority ? appState.prefs.soundStyle : 'standard_chime';
+      await playShopFloorSound(soundStyleToPlay);
+
+      if (isHighPriority) {
+        startRepeatingUrgentAlarm(newTicket);
+      }
+
+      showToast('🚨', `แจ้งซ่อมใหม่ ${ticketId} • ${cleanMachine}`);
+    }
+
+    async function changeTicketStatus(ticketId, nextStatus, resolutionNote = '') {
+      const ticket = appState.tickets[ticketId];
+      if (!ticket) return;
+
+      const activeRole = appState.prefs.activeRole || 'ช่างซ่อมบำรุง';
+      const roleInfo = ROLE_BADGES[activeRole] || ROLE_BADGES['ช่างซ่อมบำรุง'];
+      const actorLabel = `${roleInfo.senderName} (${activeRole})`;
+      const timeStr = formatThaiTime(new Date());
+
+      ticket.status = nextStatus;
+      if (nextStatus === 'in_progress' && !ticket.assignedTo) {
+        ticket.assignedTo = actorLabel;
+      }
+      if (nextStatus === 'closed') {
+        if (!ticket.assignedTo) ticket.assignedTo = actorLabel;
+        if (resolutionNote.trim()) {
+          ticket.resolutionNote = resolutionNote.trim();
+        }
+      }
+
+      if (nextStatus !== 'new' && appState.activeUrgentTicketId === ticketId) {
+        stopRepeatingUrgentAlarm();
+      }
+
+      let statusSummary = '';
+      if (nextStatus === 'in_progress') {
+        statusSummary = `รับงานและกำลังดำเนินการซ่อม ${ticket.ticketId} (${ticket.machineId})`;
+      } else if (nextStatus === 'closed') {
+        statusSummary = `ปิดงานซ่อม ${ticket.ticketId} (${ticket.machineId}) เรียบร้อยแล้ว` +
+          (ticket.resolutionNote ? ` — สรุป: ${ticket.resolutionNote}` : '');
+      }
+
+      appState.feed.push({
+        id: 'sys-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        type: 'system',
+        ticketId: ticket.ticketId,
+        actor: actorLabel,
+        status: nextStatus,
+        text: statusSummary,
+        time: timeStr
+      });
+
+      saveStateToLocalStorage();
+      renderApp();
+      scrollFeedToBottom();
+      await playShopFloorSound('standard_chime');
+    }
+
+    function sendGroupChatMessage(rawText) {
+      const text = (rawText || '').trim();
+      if (!text) return;
+
+      const role = appState.prefs.activeRole || 'ช่างซ่อมบำรุง';
+      appState.feed.push({
+        id: 'chat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        type: 'chat',
+        role,
+        text,
+        time: formatThaiTime(new Date())
+      });
+
+      saveStateToLocalStorage();
+      renderApp();
+      scrollFeedToBottom();
+    }
+
+    function scrollFeedToBottom() {
+      requestAnimationFrame(() => {
+        const container = document.getElementById('chatFeedContainer');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+    }
+
+    /**
+     * =========================================================================
+     * 5. RENDERING UI (STATS, TABS, TICKET CARDS, CHAT BUBBLES)
+     * =========================================================================
+     */
+    function renderStatsAndTabs() {
+      const allTickets = Object.values(appState.tickets);
+      const countNew = allTickets.filter((t) => t.status === 'new').length;
+      const countProgress = allTickets.filter((t) => t.status === 'in_progress').length;
+      const countClosed = allTickets.filter((t) => t.status === 'closed').length;
+
+      document.getElementById('countAll').textContent = String(allTickets.length);
+      document.getElementById('countNew').textContent = String(countNew);
+      document.getElementById('countProgress').textContent = String(countProgress);
+      document.getElementById('countClosed').textContent = String(countClosed);
+
+      document.querySelectorAll('.status-tab-btn').forEach((btn) => {
+        const active = btn.dataset.filterStatus === appState.filterStatus;
+        btn.className =
+          'status-tab-btn px-3 py-1.5 rounded-xl text-xs whitespace-nowrap flex items-center gap-1.5 transition ' +
+          (active
+            ? 'font-bold bg-slate-900 text-white shadow-2xs'
+            : 'font-semibold text-slate-600 hover:text-slate-900');
+      });
+    }
+
+    function renderTicketCardHtml(ticket) {
+      const pMeta = PRIORITY_META[ticket.priority] || PRIORITY_META.normal;
+      const sMeta = STATUS_META[ticket.status] || STATUS_META.new;
+      const isClosed = ticket.status === 'closed';
+
+      return `
+        <article class="msg-enter bg-white rounded-2xl border ${isClosed ? 'border-slate-200 opacity-95' : pMeta.cardBorderClass} shadow-xs p-3.5 sm:p-4 space-y-3">
+          <!-- Card Header: Ticket ID + Machine + Priority + Status -->
+          <div class="flex items-start justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg bg-slate-900 text-amber-300">
+                ${escapeHtml(ticket.ticketId)}
+              </span>
+              <span class="text-sm sm:text-base font-bold text-slate-900">
+                ${escapeHtml(ticket.machineId)}
+              </span>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${pMeta.badgeClass}">
+                ${escapeHtml(pMeta.label)}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${sMeta.badgeClass}">
+                ${escapeHtml(sMeta.label)}
+              </span>
+              <span class="text-[11px] text-slate-400">${escapeHtml(ticket.createdAt)}</span>
+            </div>
+          </div>
+
+          <!-- Location & Reporter Metadata -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 text-slate-600">
+            <div><span class="font-bold text-slate-700">ไลน์/โซน:</span> ${escapeHtml(ticket.lineZone)}</div>
+            <div><span class="font-bold text-slate-700">ผู้แจ้ง:</span> ${escapeHtml(ticket.reporter)}</div>
+          </div>
+
+          <!-- Symptom Description -->
+          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
+            ${escapeHtml(ticket.symptom)}
+          </p>
+
+          <!-- Assigned Technician & Resolution Note (if any) -->
+          ${ticket.assignedTo || ticket.resolutionNote
+            ? `<div class="space-y-1 text-xs">
+                ${ticket.assignedTo ? `<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-100 font-semibold">🛠️ ผู้รับผิดชอบ: ${escapeHtml(ticket.assignedTo)}</div>` : ''}
+                ${ticket.resolutionNote ? `<div class="p-2.5 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200"><strong>บันทึกการซ่อม:</strong> ${escapeHtml(ticket.resolutionNote)}</div>` : ''}
+              </div>`
+            : ''
+          }
+
+          <!-- Interactive Card Action Buttons -->
+          <div class="pt-2 border-t border-slate-100 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              data-action-ticket="${escapeHtml(ticket.ticketId)}"
+              data-action-type="accept"
+              class="card-action-btn tap-btn text-xs font-bold px-3.5 py-2 rounded-xl border ${
+                ticket.status === 'new'
+                  ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500 shadow-2xs'
+                  : 'bg-white hover:bg-amber-50 text-amber-900 border-amber-300'
+              }"
+            >
+              รับงาน
+            </button>
+
+            <button
+              type="button"
+              data-action-ticket="${escapeHtml(ticket.ticketId)}"
+              data-action-type="progress"
+              class="card-action-btn tap-btn text-xs font-bold px-3.5 py-2 rounded-xl border ${
+                ticket.status === 'in_progress'
+                  ? 'bg-amber-100 text-amber-950 border-amber-400 ring-1 ring-amber-300'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }"
+            >
+              กำลังซ่อม
+            </button>
+
+            <button
+              type="button"
+              data-action-ticket="${escapeHtml(ticket.ticketId)}"
+              data-action-type="close"
+              class="card-action-btn tap-btn text-xs font-bold px-3.5 py-2 rounded-xl border ${
+                ticket.status === 'closed'
+                  ? 'bg-emerald-600 text-white border-emerald-700'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+              }"
+            >
+              ปิดงานซ่อม
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderChatFeed() {
+      const container = document.getElementById('chatFeedContainer');
+      const query = appState.searchQuery.trim().toLowerCase();
+
+      const filteredFeed = appState.feed.filter((item) => {
+        if (item.type === 'chat') {
+          if (appState.filterStatus !== 'all' || appState.filterPriority !== 'all') {
+            return false;
+          }
+          if (!query) return true;
+          return (
+            item.text.toLowerCase().includes(query) ||
+            item.role.toLowerCase().includes(query)
+          );
+        }
+
+        const ticket = appState.tickets[item.ticketId];
+        if (!ticket) return false;
+
+        if (appState.filterStatus !== 'all' && ticket.status !== appState.filterStatus) {
+          return false;
+        }
+
+        if (appState.filterPriority === 'emergency' && ticket.priority !== 'emergency') {
+          return false;
+        }
+        if (
+          appState.filterPriority === 'urgent' &&
+          ticket.priority !== 'emergency' &&
+          ticket.priority !== 'urgent'
+        ) {
+          return false;
+        }
+        if (appState.filterPriority === 'normal' && ticket.priority !== 'normal') {
+          return false;
+        }
+
+        if (!query) return true;
+        return (
+          ticket.ticketId.toLowerCase().includes(query) ||
+          ticket.machineId.toLowerCase().includes(query) ||
+          ticket.lineZone.toLowerCase().includes(query) ||
+          ticket.symptom.toLowerCase().includes(query) ||
+          (item.text && item.text.toLowerCase().includes(query))
+        );
+      });
+
+      const dateBannerHtml = `
+        <div class="flex justify-center">
+          <span class="text-[11px] font-semibold px-3 py-1 rounded-full bg-slate-200/80 text-slate-600">
+            วันนี้ • ห้องแชทกลุ่มแจ้งซ่อมหน้างาน
+          </span>
+        </div>
+      `;
+
+      if (filteredFeed.length === 0) {
+        container.innerHTML =
+          dateBannerHtml +
+          `
+          <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">
+            <p class="text-sm font-bold text-slate-700">ไม่พบรายการที่ตรงกับตัวกรอง</p>
+            <p class="text-xs mt-1">ลองล้างคำค้นหา หรือกด "+ จำลองเว็บส่งแจ้งซ่อม" เพื่อสร้างใบแจ้งซ่อมใหม่</p>
+          </div>
+        `;
+        return;
+      }
+
+      const itemsHtml = filteredFeed
+        .map((item) => {
+          if (item.type === 'ticket') {
+            const ticket = appState.tickets[item.ticketId];
+            return ticket ? renderTicketCardHtml(ticket) : '';
+          }
+
+          if (item.type === 'system') {
+            const sMeta = STATUS_META[item.status] || STATUS_META.in_progress;
+            return `
+              <div class="msg-enter flex justify-center">
+                <div class="max-w-[94%] bg-white border border-slate-200 rounded-2xl sm:rounded-full px-3.5 py-1.5 text-xs text-slate-700 shadow-2xs flex items-center gap-2 flex-wrap justify-center">
+                  <span class="font-bold text-slate-900">${escapeHtml(item.actor)}</span>
+                  <span>${escapeHtml(item.text)}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${sMeta.badgeClass}">
+                    ${escapeHtml(sMeta.label)}
+                  </span>
+                  <span class="text-[10px] text-slate-400">${escapeHtml(item.time)}</span>
+                </div>
+              </div>
+            `;
+          }
+
+          // Team member chat message bubble
+          const roleMeta = ROLE_BADGES[item.role] || ROLE_BADGES['ช่างซ่อมบำรุง'];
+          const isCurrentUserRole = item.role === appState.prefs.activeRole;
+
+          if (isCurrentUserRole) {
+            return `
+              <div class="msg-enter flex items-end justify-end gap-2">
+                <div class="bg-slate-900 text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 shadow-xs max-w-[85%] sm:max-w-[75%]">
+                  <div class="flex items-center justify-end gap-2 mb-1">
+                    <span class="text-[10px] text-slate-400">${escapeHtml(item.time)}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      ${escapeHtml(item.role)}
+                    </span>
+                    <span class="text-xs font-bold text-amber-300">${escapeHtml(roleMeta.senderName)}</span>
+                  </div>
+                  <p class="text-xs sm:text-sm leading-relaxed text-slate-100">${escapeHtml(item.text)}</p>
+                </div>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="msg-enter flex items-start gap-2.5">
+              <div class="w-8 h-8 rounded-xl ${roleMeta.avatarBg} text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                ${escapeHtml(roleMeta.avatarText)}
+              </div>
+              <div class="bg-white rounded-2xl rounded-tl-sm border border-slate-200 px-3.5 py-2.5 shadow-2xs max-w-[85%] sm:max-w-[75%]">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-xs font-bold text-slate-900">${escapeHtml(roleMeta.senderName)}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleMeta.pillClass}">
+                    ${escapeHtml(item.role)}
+                  </span>
+                  <span class="text-[10px] text-slate-400">${escapeHtml(item.time)}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">${escapeHtml(item.text)}</p>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      container.innerHTML = dateBannerHtml + itemsHtml;
+
+      // Bind interactive action buttons inside ticket cards
+      document.querySelectorAll('.card-action-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const tId = btn.dataset.actionTicket;
+          const action = btn.dataset.actionType;
+          if (action === 'accept' || action === 'progress') {
+            await changeTicketStatus(tId, 'in_progress');
+          } else if (action === 'close') {
+            openCloseTicketModal(tId);
+          }
+        });
+      });
+    }
+
+    function renderApp() {
+      renderStatsAndTabs();
+      renderChatFeed();
+      updateAudioUi();
+    }
+
+    /**
+     * =========================================================================
+     * 6. MODALS, SPLIT-VIEW & EVENT HANDLERS
+     * =========================================================================
+     */
+    function openWebTriggerModal() {
+      // On desktop (>=1024px) if split view is enabled, focus split view; otherwise open modal
+      if (window.innerWidth >= 1024 && appState.prefs.desktopSplitOpen) {
+        document.getElementById('inputMachineId').focus();
+        return;
+      }
+      const slot = document.getElementById('modalTriggerFormSlot');
+      const formEl = document.getElementById('sharedTriggerFormContainer');
+      if (slot && formEl && formEl.parentElement !== slot) {
+        slot.appendChild(formEl);
+      }
+      document.getElementById('webTriggerModal').classList.remove('hidden');
+    }
+
+    function closeWebTriggerModal() {
+      document.getElementById('webTriggerModal').classList.add('hidden');
+    }
+
+    function applyDesktopSplitViewState() {
+      const splitPanel = document.getElementById('desktopSplitTriggerPanel');
+      const splitLabel = document.getElementById('splitViewLabel');
+      const formEl = document.getElementById('sharedTriggerFormContainer');
+      const desktopSlot = document.getElementById('desktopSplitFormSlot');
+      const modalSlot = document.getElementById('modalTriggerFormSlot');
+
+      const showSplit = window.innerWidth >= 1024 && appState.prefs.desktopSplitOpen;
+
+      if (showSplit) {
+        splitPanel.classList.remove('hidden');
+        splitPanel.classList.add('flex');
+        if (desktopSlot && formEl && formEl.parentElement !== desktopSlot) {
+          desktopSlot.appendChild(formEl);
+        }
+        if (splitLabel) splitLabel.textContent = 'ซ่อนแผงเว็บ';
+        closeWebTriggerModal();
+      } else {
+        splitPanel.classList.add('hidden');
+        splitPanel.classList.remove('flex');
+        if (modalSlot && formEl && formEl.parentElement !== modalSlot) {
+          modalSlot.appendChild(formEl);
+        }
+        if (splitLabel) splitLabel.textContent = 'มุมมองคู่เว็บ';
+      }
+    }
+
+    function openCloseTicketModal(ticketId) {
+      const ticket = appState.tickets[ticketId];
+      if (!ticket) return;
+      appState.pendingCloseTicketId = ticketId;
+      document.getElementById('closeTicketSubTitle').textContent = `${ticket.ticketId} • ${ticket.machineId}`;
+      document.getElementById('repairRootCauseInput').value = ticket.resolutionNote || '';
+      document.getElementById('closeTicketModal').classList.remove('hidden');
+    }
+
+    function closeCloseTicketModal() {
+      appState.pendingCloseTicketId = null;
+      document.getElementById('closeTicketModal').classList.add('hidden');
+    }
+
+    function syncSoundSettingsModalInputs() {
+      document.getElementById('modalSoundEnabledCheckbox').checked = appState.prefs.soundEnabled;
+      document.getElementById('soundStyleSelect').value = appState.prefs.soundStyle;
+      document.getElementById('volumeBoostSlider').value = String(appState.prefs.volumeBoost);
+      document.getElementById('volumeBoostValueLabel').textContent =
+        `${appState.prefs.volumeBoost}% (${appState.prefs.volumeBoost >= 200 ? 'ดังมาก' : appState.prefs.volumeBoost >= 140 ? 'ดัง' : 'ปกติ'})`;
+      document.getElementById('repeatUrgentCheckbox').checked = appState.prefs.repeatUrgent;
+    }
+
+    function bindAllEvents() {
+      // Audio unlock hero banner & banner diagnostic link
+      document.getElementById('unlockAudioHeroBtn').addEventListener('click', unlockAudioAndChime);
+      document.getElementById('openDiagFromBannerBtn').addEventListener('click', () => {
+        syncSoundSettingsModalInputs();
+        updateAudioUi();
+        document.getElementById('soundSettingsModal').classList.remove('hidden');
+      });
+
+      // Header quick mute/unmute toggle
+      document.getElementById('quickMuteToggleBtn').addEventListener('click', async () => {
+        appState.prefs.soundEnabled = !appState.prefs.soundEnabled;
+        saveStateToLocalStorage();
+        if (!appState.prefs.soundEnabled) {
+          stopRepeatingUrgentAlarm();
+          showToast('🔇', 'ปิดเสียงแจ้งเตือนชั่วคราว');
+        } else {
+          await unlockAudioAndChime();
+        }
+        updateAudioUi();
+      });
+
+      // Header sound settings button
+      document.getElementById('openSoundSettingsBtn').addEventListener('click', () => {
+        syncSoundSettingsModalInputs();
+        updateAudioUi();
+        document.getElementById('soundSettingsModal').classList.remove('hidden');
+      });
+
+      // Floating Stop Urgent Alarm Button
+      document.getElementById('floatingStopAlarmBtn').addEventListener('click', () => {
+        stopRepeatingUrgentAlarm();
+        showToast('⏹', 'หยุดเสียงเตือนฉุกเฉินแล้ว');
+      });
+
+      // Open Web Trigger Modal / Split View
+      document.getElementById('openWebTriggerBtn').addEventListener('click', openWebTriggerModal);
+      document.getElementById('closeWebTriggerModalBtn').addEventListener('click', closeWebTriggerModal);
+
+      document.getElementById('toggleSplitViewBtn').addEventListener('click', () => {
+        appState.prefs.desktopSplitOpen = !appState.prefs.desktopSplitOpen;
+        saveStateToLocalStorage();
+        applyDesktopSplitViewState();
+      });
+
+      document.getElementById('closeDesktopSplitBtn').addEventListener('click', () => {
+        appState.prefs.desktopSplitOpen = false;
+        saveStateToLocalStorage();
+        applyDesktopSplitViewState();
+      });
+
+      // Preset Trigger Buttons
+      document.querySelectorAll('.preset-trigger-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const preset = PRESET_TICKETS[btn.dataset.presetKey];
+          if (!preset) return;
+          document.getElementById('inputMachineId').value = preset.machineId;
+          document.getElementById('inputLineZone').value = preset.lineZone;
+          document.getElementById('inputPriority').value = preset.priority;
+          document.getElementById('inputReporter').value = preset.reporter;
+          document.getElementById('inputSymptom').value = preset.symptom;
+          await createIncomingWebsiteTicket(preset);
+        });
+      });
+
+      // Custom Website Ticket Form Submit
+      document.getElementById('websiteTicketForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createIncomingWebsiteTicket({
+          machineId: document.getElementById('inputMachineId').value,
+          lineZone: document.getElementById('inputLineZone').value,
+          priority: document.getElementById('inputPriority').value,
+          reporter: document.getElementById('inputReporter').value,
+          symptom: document.getElementById('inputSymptom').value
+        });
+      });
+
+      // Close Ticket Modal Actions
+      document.getElementById('cancelCloseTicketBtn').addEventListener('click', closeCloseTicketModal);
+      document.getElementById('cancelCloseTicketFooterBtn').addEventListener('click', closeCloseTicketModal);
+      document.getElementById('confirmCloseTicketForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!appState.pendingCloseTicketId) return;
+        const note = document.getElementById('repairRootCauseInput').value;
+        const targetId = appState.pendingCloseTicketId;
+        closeCloseTicketModal();
+        await changeTicketStatus(targetId, 'closed', note);
+        showToast('✅', `ปิดงานซ่อม ${targetId} เรียบร้อยแล้ว`);
+      });
+
+      // Filter Tabs, Search & Priority Filter
+      document.querySelectorAll('.status-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          appState.filterStatus = btn.dataset.filterStatus;
+          renderApp();
+        });
+      });
+
+      document.getElementById('searchFilterInput').addEventListener('input', (e) => {
+        appState.searchQuery = e.target.value;
+        renderChatFeed();
+      });
+
+      document.getElementById('priorityFilterSelect').addEventListener('change', (e) => {
+        appState.filterPriority = e.target.value;
+        renderChatFeed();
+      });
+
+      // Bottom Composer Role, Quick Reply Chips & Send Form
+      const roleSelect = document.getElementById('composerRoleSelect');
+      roleSelect.value = appState.prefs.activeRole;
+      roleSelect.addEventListener('change', (e) => {
+        appState.prefs.activeRole = e.target.value;
+        saveStateToLocalStorage();
+        renderChatFeed();
+      });
+
+      document.querySelectorAll('.quick-reply-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const input = document.getElementById('chatMessageInput');
+          input.value = chip.dataset.quickReply;
+          input.focus();
+        });
+      });
+
+      document.getElementById('chatComposerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chatMessageInput');
+        sendGroupChatMessage(input.value);
+        input.value = '';
+      });
+
+      // Sound Settings Modal Controls
+      document.getElementById('closeSoundSettingsBtn').addEventListener('click', () => {
+        document.getElementById('soundSettingsModal').classList.add('hidden');
+      });
+
+      document.getElementById('modalSoundEnabledCheckbox').addEventListener('change', (e) => {
+        appState.prefs.soundEnabled = e.target.checked;
+        if (!appState.prefs.soundEnabled) stopRepeatingUrgentAlarm();
+        saveStateToLocalStorage();
+        updateAudioUi();
+      });
+
+      document.getElementById('soundStyleSelect').addEventListener('change', (e) => {
+        appState.prefs.soundStyle = e.target.value;
+        saveStateToLocalStorage();
+      });
+
+      document.getElementById('volumeBoostSlider').addEventListener('input', (e) => {
+        appState.prefs.volumeBoost = Number(e.target.value) || 240;
+        syncSoundSettingsModalInputs();
+        saveStateToLocalStorage();
+        updateAudioUi();
+      });
+
+      document.getElementById('repeatUrgentCheckbox').addEventListener('change', (e) => {
+        appState.prefs.repeatUrgent = e.target.checked;
+        if (!appState.prefs.repeatUrgent) stopRepeatingUrgentAlarm();
+        saveStateToLocalStorage();
+      });
+
+      document.getElementById('modalTestSoundBtn').addEventListener('click', async () => {
+        appState.prefs.soundEnabled = true;
+        syncSoundSettingsModalInputs();
+        saveStateToLocalStorage();
+        await playShopFloorSound(appState.prefs.soundStyle);
+      });
+
+      // Header 3-Dots App Menu
+      const menuBtn = document.getElementById('appMenuBtn');
+      const menuDropdown = document.getElementById('appMenuDropdown');
+
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', () => {
+        menuDropdown.classList.add('hidden');
+      });
+
+      document.getElementById('menuInstallPwaBtn').addEventListener('click', () => {
+        menuDropdown.classList.add('hidden');
+        document.getElementById('installPwaModal').classList.remove('hidden');
+      });
+
+      document.getElementById('closeInstallPwaBtn').addEventListener('click', () => {
+        document.getElementById('installPwaModal').classList.add('hidden');
+      });
+
+      document.getElementById('menuWebhookGuideBtn').addEventListener('click', () => {
+        menuDropdown.classList.add('hidden');
+        document.getElementById('webhookGuideModal').classList.remove('hidden');
+      });
+
+      document.getElementById('closeWebhookGuideBtn').addEventListener('click', () => {
+        document.getElementById('webhookGuideModal').classList.add('hidden');
+      });
+
+      document.getElementById('menuSoundDiagBtn').addEventListener('click', () => {
+        menuDropdown.classList.add('hidden');
+        syncSoundSettingsModalInputs();
+        updateAudioUi();
+        document.getElementById('soundSettingsModal').classList.remove('hidden');
+      });
+
+      document.getElementById('menuResetDemoBtn').addEventListener('click', () => {
+        menuDropdown.classList.add('hidden');
+        stopRepeatingUrgentAlarm();
+        localStorage.removeItem(STORAGE_KEY);
+        const fresh = createDefaultData();
+        appState.nextTicketNumber = fresh.nextTicketNumber;
+        appState.tickets = fresh.tickets;
+        appState.feed = fresh.feed;
+        appState.prefs = fresh.prefs;
+        appState.filterStatus = 'all';
+        appState.filterPriority = 'all';
+        appState.searchQuery = '';
+        document.getElementById('searchFilterInput').value = '';
+        document.getElementById('priorityFilterSelect').value = 'all';
+        document.getElementById('composerRoleSelect').value = appState.prefs.activeRole;
+        applyDesktopSplitViewState();
+        renderApp();
+        scrollFeedToBottom();
+        showToast('🔄', 'รีเซ็ตข้อมูลตัวอย่างเรียบร้อยแล้ว');
+      });
+
+      // Copy Code Buttons inside Webhook Guide Modal (using execCommand fallback)
+      document.querySelectorAll('.copy-code-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const target = document.getElementById(btn.dataset.copyTarget);
+          if (!target) return;
+          const textarea = document.createElement('textarea');
+          textarea.value = target.textContent;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand('copy');
+            showToast('📋', 'คัดลอกโค้ดลงคลิปบอร์ดแล้ว');
+          } catch (_err) {
+            showToast('⚠️', 'ไม่สามารถคัดลอกอัตโนมัติ กรุณาลากคลุมเพื่อคัดลอก');
+          }
+          document.body.removeChild(textarea);
+        });
+      });
+
+      // Native PWA beforeinstallprompt listener (Chrome / Edge / Android)
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        appState.deferredInstallPrompt = e;
+        document.getElementById('nativeInstallBox').classList.remove('hidden');
+      });
+
+      document.getElementById('triggerNativeInstallBtn').addEventListener('click', async () => {
+        if (!appState.deferredInstallPrompt) return;
+        appState.deferredInstallPrompt.prompt();
+        await appState.deferredInstallPrompt.userChoice;
+        appState.deferredInstallPrompt = null;
+        document.getElementById('nativeInstallBox').classList.add('hidden');
+      });
+
+      // Unlock Web Audio automatically on first user gesture anywhere
+      document.addEventListener(
+        'pointerdown',
+        async () => {
+          if (!appState.audioUnlocked && appState.prefs.soundEnabled) {
+            const ctx = getAudioContext();
+            if (ctx && ctx.state === 'suspended') {
+              try {
+                await ctx.resume();
+                if (ctx.state === 'running') {
+                  appState.audioUnlocked = true;
+                  updateAudioUi();
+                }
+              } catch (_err) {
+                // Handled by explicit unlock button
+              }
+            }
+          }
+        },
+        { passive: true }
+      );
+
+      window.addEventListener('resize', applyDesktopSplitViewState);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      bindAllEvents();
+      applyDesktopSplitViewState();
+      renderApp();
+      scrollFeedToBottom();
+    });
+  </script>
+</body>
+<html>
