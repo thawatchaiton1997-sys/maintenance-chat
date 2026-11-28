@@ -78,10 +78,10 @@
             </h1>
           </div>
           <div class="flex items-center gap-1.5 text-[11px] text-emerald-400">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-            <span>ออนไลน์</span>
+            <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+            <span id="syncStatusText">พร้อมซิงก์ข้ามเครื่อง</span>
             <span class="text-slate-500">•</span>
-            <span class="text-slate-300 truncate">บันทึกในเครื่องอัตโนมัติ</span>
+            <span id="roomBadgeLabel" class="text-amber-300 font-semibold truncate">ห้อง: BKF-MAIN</span>
           </div>
         </div>
       </div>
@@ -122,6 +122,53 @@
           <span>+</span>
           <span>จำลองเว็บส่งแจ้งซ่อม</span>
         </button>
+      </div>
+    </div>
+
+    <!-- แถบซิงก์ลิงก์ห้อง (?room=...) -->
+    <div class="bg-slate-950/90 text-slate-200 px-3 sm:px-5 py-1.5 border-t border-slate-800 text-xs">
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 flex-1 min-w-[210px]">
+          <span class="text-slate-400 shrink-0">รหัสห้อง:</span>
+          <input
+            id="roomCodeInput"
+            type="text"
+            value="BKF-MAIN"
+            placeholder="เช่น BKF-MAIN"
+            class="w-28 sm:w-36 rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1 text-xs font-bold text-amber-300 uppercase focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <button
+            id="applyRoomBtn"
+            type="button"
+            class="tap-btn px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-[11px]"
+          >
+            เข้าห้อง
+          </button>
+          <button
+            id="randomRoomBtn"
+            type="button"
+            class="tap-btn px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[11px] border border-slate-700"
+          >
+            สุ่มห้อง
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button
+            id="copyRoomLinkBtn"
+            type="button"
+            class="tap-btn px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-400/40"
+          >
+            คัดลอกลิงก์ห้อง
+          </button>
+          <button
+            id="manualSyncBtn"
+            type="button"
+            class="tap-btn px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-[11px] border border-emerald-400/40"
+          >
+            ↻ ซิงก์ตอนนี้
+          </button>
+        </div>
       </div>
     </div>
 
@@ -407,7 +454,7 @@
         </form>
 
         <div class="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100">
-          <span>ข้อมูลเก็บในเครื่อง (localStorage)</span>
+          <span>ซิงก์กับ Google Sheets (MaintenanceState)</span>
           <button id="resetDemoDataBtn" type="button" class="underline hover:text-rose-600 font-medium">
             รีเซ็ตข้อมูลตัวอย่าง
           </button>
@@ -487,7 +534,33 @@
   <div id="toastContainer" class="fixed bottom-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <script>
-    const STORAGE_KEY = 'bkf_maintenance_chat_pwa_v2';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyuy8rPPVBHV_7R2bRgkuUlopZ7N5EZfGcwkZO1hbPLGJhZ-hLNrV7qMwoZ0T-WpX1raA/exec';
+    const DEFAULT_ROOM = 'BKF-MAIN';
+    const STORAGE_KEY_PREFIX = 'bkf_maintenance_chat_pwa_v3_';
+
+    function sanitizeRoomCode(raw) {
+      const clean = String(raw || DEFAULT_ROOM)
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, '');
+      return clean || DEFAULT_ROOM;
+    }
+
+    function getCurrentRoomFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return sanitizeRoomCode(params.get('room') || DEFAULT_ROOM);
+    }
+
+    let currentRoom = getCurrentRoomFromUrl();
+    let STORAGE_KEY = STORAGE_KEY_PREFIX + currentRoom;
+
+    function updateUrlRoomParam(roomCode) {
+      const cleanRoom = sanitizeRoomCode(roomCode);
+      const url = new URL(window.location.href);
+      url.searchParams.set('room', cleanRoom);
+      window.history.replaceState({}, '', url.toString());
+      return cleanRoom;
+    }
 
     // ไลน์ผลิต / โซนหน้างาน 14 รายการ
     const LINE_ZONES = [
@@ -548,6 +621,7 @@
         filterPriority: 'ALL',
         searchQuery: '',
         soundEnabled: true,
+        lastUpdatedAt: '',
         prefs: {
           activeRole: TECH_TEAM[1],
           loggedInUser: '',
@@ -597,6 +671,8 @@
     let appState = loadState();
     let alarmInterval = null;
     let audioCtx = null;
+    let syncTimer = null;
+    let isSyncing = false;
 
     function loadState() {
       try {
@@ -615,6 +691,146 @@
       } catch (e) {
         console.warn('Save error:', e);
       }
+    }
+
+    function setSyncIndicator(stateType, text) {
+      const dot = document.getElementById('syncStatusDot');
+      const label = document.getElementById('syncStatusText');
+      if (label && text) label.textContent = text;
+      if (!dot) return;
+      if (stateType === 'syncing') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block';
+      } else if (stateType === 'error') {
+        dot.className = 'w-2 h-2 rounded-full bg-rose-400 inline-block';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 inline-block';
+      }
+    }
+
+    function extractRoomPayload(remoteState, roomKey) {
+      if (!remoteState || typeof remoteState !== 'object') return null;
+      if (remoteState.rooms && typeof remoteState.rooms === 'object' && remoteState.rooms[roomKey]) {
+        return remoteState.rooms[roomKey];
+      }
+      if (Array.isArray(remoteState.tickets) || Array.isArray(remoteState.generalMessages)) {
+        return {
+          tickets: Array.isArray(remoteState.tickets) ? remoteState.tickets : [],
+          generalMessages: Array.isArray(remoteState.generalMessages) ? remoteState.generalMessages : []
+        };
+      }
+      return null;
+    }
+
+    function buildMergedCloudState(baseRemoteState, roomKey, roomData) {
+      const base = (baseRemoteState && typeof baseRemoteState === 'object') ? { ...baseRemoteState } : {};
+      const rooms = (base.rooms && typeof base.rooms === 'object') ? { ...base.rooms } : {};
+      rooms[roomKey] = {
+        tickets: Array.isArray(roomData.tickets) ? roomData.tickets : [],
+        generalMessages: Array.isArray(roomData.generalMessages) ? roomData.generalMessages : [],
+        updatedAt: new Date().toISOString()
+      };
+      return {
+        ...base,
+        rooms,
+        tickets: rooms[roomKey].tickets,
+        generalMessages: rooms[roomKey].generalMessages,
+        updatedAt: rooms[roomKey].updatedAt
+      };
+    }
+
+    async function pushRoomStateToCloud(silent = true) {
+      if (!GAS_WEB_APP_URL) return;
+      setSyncIndicator('syncing', 'กำลังซิงก์ขึ้นชีต...');
+      try {
+        let existingRemote = null;
+        try {
+          const getRes = await fetch(`${GAS_WEB_APP_URL}?room=${encodeURIComponent(currentRoom)}&t=${Date.now()}`, {
+            method: 'GET',
+            cache: 'no-store'
+          });
+          const getJson = await getRes.json();
+          if (getJson && getJson.ok && getJson.state) {
+            existingRemote = getJson.state;
+          }
+        } catch (_) {}
+
+        const mergedState = buildMergedCloudState(existingRemote, currentRoom, {
+          tickets: appState.tickets,
+          generalMessages: appState.generalMessages
+        });
+
+        await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'saveState',
+            room: currentRoom,
+            state: mergedState
+          })
+        });
+
+        appState.lastUpdatedAt = mergedState.updatedAt;
+        saveStateToLocalStorage();
+        setSyncIndicator('ok', `ซิงก์แล้ว (${nowTimeStr()})`);
+        if (!silent) showToast('☁️', `ซิงก์ห้อง ${currentRoom} เรียบร้อย`);
+      } catch (err) {
+        console.warn('Push sync error:', err);
+        setSyncIndicator('error', 'ซิงก์ไม่สำเร็จ (เก็บในเครื่องแล้ว)');
+        if (!silent) showToast('⚠️', 'ส่งข้อมูลขึ้นชีตไม่สำเร็จ');
+      }
+    }
+
+    async function pullRoomStateFromCloud(silent = true) {
+      if (!GAS_WEB_APP_URL || isSyncing) return;
+      isSyncing = true;
+      setSyncIndicator('syncing', 'กำลังดึงข้อมูล...');
+      try {
+        const res = await fetch(`${GAS_WEB_APP_URL}?room=${encodeURIComponent(currentRoom)}&t=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store'
+        });
+        const data = await res.json();
+        if (data && data.ok) {
+          const roomPayload = extractRoomPayload(data.state, currentRoom);
+          if (roomPayload) {
+            const prevTopTicket = appState.tickets[0] ? `${appState.tickets[0].id}:${appState.tickets[0].status}:${appState.tickets[0].updatedAt}` : '';
+            const nextTickets = Array.isArray(roomPayload.tickets) ? roomPayload.tickets : [];
+            const nextMsgs = Array.isArray(roomPayload.generalMessages) ? roomPayload.generalMessages : [];
+            const nextTopTicket = nextTickets[0] ? `${nextTickets[0].id}:${nextTickets[0].status}:${nextTickets[0].updatedAt}` : '';
+
+            const hasRemoteChange =
+              JSON.stringify(nextTickets) !== JSON.stringify(appState.tickets) ||
+              JSON.stringify(nextMsgs) !== JSON.stringify(appState.generalMessages);
+
+            if (hasRemoteChange) {
+              appState.tickets = nextTickets;
+              appState.generalMessages = nextMsgs;
+              saveStateToLocalStorage();
+              renderChatFeed();
+
+              if (nextTopTicket && nextTopTicket !== prevTopTicket && nextTickets[0].status === 'รอรับงาน') {
+                triggerAlertSound(nextTickets[0].priority, nextTickets[0].id, nextTickets[0].machineCode);
+              }
+            }
+          }
+          setSyncIndicator('ok', `ซิงก์แล้ว (${nowTimeStr()})`);
+          if (!silent) showToast('🔄', `อัปเดตข้อมูลห้อง ${currentRoom} แล้ว`);
+        } else {
+          setSyncIndicator('ok', 'ออนไลน์');
+        }
+      } catch (err) {
+        console.warn('Pull sync error:', err);
+        setSyncIndicator('error', 'รอการเชื่อมต่อชีต');
+        if (!silent) showToast('⚠️', 'ดึงข้อมูลจากชีตไม่สำเร็จ');
+      } finally {
+        isSyncing = false;
+      }
+    }
+
+    function saveAndSync(silent = true) {
+      saveStateToLocalStorage();
+      pushRoomStateToCloud(silent);
     }
 
     function showToast(icon, message) {
@@ -774,9 +990,7 @@
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {
-          // กรณีที่ยังไม่ได้สร้างไฟล์ sw.js ในโฟลเดอร์ จะไม่ทำให้หน้าแอปทำงานผิดพลาด
-        });
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
       });
     }
 
@@ -958,7 +1172,7 @@
         if (
           isActionBtn &&
           !modal.contains(targetBtn) &&
-          !['openLoginModalBtn', 'toggleSimPanelBtn', 'testSoundBtn', 'toggleSoundBtn', 'requestNotifyPermBtn'].includes(targetBtn.id)
+          !['openLoginModalBtn', 'toggleSimPanelBtn', 'testSoundBtn', 'toggleSoundBtn', 'requestNotifyPermBtn', 'applyRoomBtn', 'randomRoomBtn', 'copyRoomLinkBtn', 'manualSyncBtn'].includes(targetBtn.id)
         ) {
           e.preventDefault();
           e.stopPropagation();
@@ -1001,7 +1215,7 @@
         updates: []
       };
       appState.tickets.unshift(ticket);
-      saveStateToLocalStorage();
+      saveAndSync(true);
       renderChatFeed();
       triggerAlertSound(ticket.priority, ticket.id, ticket.machineCode);
       showToast('📣', `ส่งใบแจ้งซ่อม ${ticket.id} (${ticket.machineCode}) แล้ว`);
@@ -1041,7 +1255,7 @@
         stopAlertSound();
       }
 
-      saveStateToLocalStorage();
+      saveAndSync(true);
       renderChatFeed();
       showToast('🔧', `${ticket.id}: ${newStatus} โดย ${actor}`);
     }
@@ -1179,6 +1393,85 @@
       feed.innerHTML =
         (ticketHtml || '<div class="text-center py-10 text-xs text-slate-400">ไม่พบใบแจ้งซ่อมตามเงื่อนไขที่เลือก</div>') +
         (generalHtml ? `<div class="pt-2 space-y-2"><div class="text-[11px] font-bold text-slate-400 px-1">ข้อความอัปเดตในกลุ่ม</div>${generalHtml}</div>` : '');
+    }
+
+    // ==========================================
+    // จัดการห้องซิงก์ (?room=...)
+    // ==========================================
+    function switchRoom(newRoomRaw) {
+      const cleanRoom = updateUrlRoomParam(newRoomRaw);
+      const preservedUser = appState.prefs.loggedInUser || '';
+      currentRoom = cleanRoom;
+      STORAGE_KEY = STORAGE_KEY_PREFIX + currentRoom;
+
+      const roomInput = document.getElementById('roomCodeInput');
+      const roomBadge = document.getElementById('roomBadgeLabel');
+      if (roomInput) roomInput.value = currentRoom;
+      if (roomBadge) roomBadge.textContent = `ห้อง: ${currentRoom}`;
+
+      appState = loadState();
+      if (preservedUser) appState.prefs.loggedInUser = preservedUser;
+      saveStateToLocalStorage();
+      renderChatFeed();
+      pullRoomStateFromCloud(false);
+    }
+
+    function initRoomControls() {
+      const roomInput = document.getElementById('roomCodeInput');
+      const roomBadge = document.getElementById('roomBadgeLabel');
+      const applyBtn = document.getElementById('applyRoomBtn');
+      const randomBtn = document.getElementById('randomRoomBtn');
+      const copyBtn = document.getElementById('copyRoomLinkBtn');
+      const syncBtn = document.getElementById('manualSyncBtn');
+
+      updateUrlRoomParam(currentRoom);
+      if (roomInput) roomInput.value = currentRoom;
+      if (roomBadge) roomBadge.textContent = `ห้อง: ${currentRoom}`;
+
+      if (applyBtn && roomInput) {
+        applyBtn.addEventListener('click', () => switchRoom(roomInput.value));
+        roomInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            switchRoom(roomInput.value);
+          }
+        });
+      }
+
+      if (randomBtn) {
+        randomBtn.addEventListener('click', () => {
+          const randCode = 'BKF-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+          switchRoom(randCode);
+        });
+      }
+
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+          const shareUrl = window.location.href;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(shareUrl);
+            } else {
+              const temp = document.createElement('input');
+              temp.value = shareUrl;
+              document.body.appendChild(temp);
+              temp.select();
+              document.execCommand('copy');
+              temp.remove();
+            }
+            showToast('🔗', `คัดลอกลิงก์ห้อง ${currentRoom} แล้ว`);
+          } catch (_) {
+            showToast('ℹ️', shareUrl);
+          }
+        });
+      }
+
+      if (syncBtn) {
+        syncBtn.addEventListener('click', () => pullRoomStateFromCloud(false));
+      }
+
+      clearInterval(syncTimer);
+      syncTimer = setInterval(() => pullRoomStateFromCloud(true), 8000);
     }
 
     // ==========================================
@@ -1324,7 +1617,7 @@
           text: clean,
           time: nowTimeStr()
         });
-        saveStateToLocalStorage();
+        saveAndSync(true);
         renderChatFeed();
         showToast('💬', 'ส่งข้อความเรียบร้อย');
       };
@@ -1354,7 +1647,7 @@
           const currentUser = appState.prefs.loggedInUser;
           appState = createSeedState();
           appState.prefs.loggedInUser = currentUser;
-          saveStateToLocalStorage();
+          saveAndSync(false);
           populateSelects();
           if (currentUser) syncAutoUserIdentity(currentUser);
           renderChatFeed();
@@ -1367,8 +1660,10 @@
       refreshNotifyPermLabel();
       populateSelects();
       bindEvents();
+      initRoomControls();
       initEmployeeAutoLogin();
       renderChatFeed();
+      pullRoomStateFromCloud(true);
     });
   </script>
 </body>
